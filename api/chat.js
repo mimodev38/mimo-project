@@ -29,10 +29,8 @@ export default async function handler(req, res) {
 const data = await response.json();
 
 if (!response.ok) {
-  const err = await response.text();
-
   return res.status(500).json({
-    reply: "API hiba történt: " + err
+    reply: "API hiba történt: " + JSON.stringify(data)
   });
 }
 
