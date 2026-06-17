@@ -240,27 +240,28 @@ btn.onclick = async () => {
   });
 
   const res = await fetch("/api/chat", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    message: "Kinyerés: cím, dátum, mérők. Csak JSON válasz!\n\n" + JSON.stringify(content)
-  })
-});
-
-const data = await res.json();
-console.log(data);
-
-status.textContent = data.reply || JSON.stringify(data);
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      message: "Kinyerés: cím, dátum, mérők. Csak JSON válasz!\n\n" + JSON.stringify(content)
+    })
+  });
 
   const data = await res.json();
-  const text = data.content[0].text;
+  console.log(data);
 
-  const json = JSON.parse(text.replace(/```/g,''));
+  let json;
+  try {
+    json = JSON.parse(data.reply);
+  } catch (e) {
+    status.textContent = data.reply || JSON.stringify(data);
+    return;
+  }
 
-  document.getElementById('uploadCard').style.display="none";
-  document.getElementById('resultCard').style.display="block";
+  document.getElementById('uploadCard').style.display = "none";
+  document.getElementById('resultCard').style.display = "block";
 
   document.getElementById('cim').textContent = json.cim || '';
   document.getElementById('datum').textContent = json.birtokbaadas_datuma || '';
@@ -268,7 +269,7 @@ status.textContent = data.reply || JSON.stringify(data);
   const meters = document.getElementById('meters');
   meters.innerHTML = '';
 
-  (json.merok || []).forEach(m=>{
+  (json.merok || []).forEach(m => {
     const div = document.createElement('div');
     div.className = 'meter';
     div.innerHTML = `
@@ -280,7 +281,7 @@ status.textContent = data.reply || JSON.stringify(data);
 
   status.textContent = "";
 };
-
+  
 </script>
 
 </body>
