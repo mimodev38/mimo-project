@@ -231,18 +231,15 @@ btn.onclick = async () => {
     text: "Kinyerés: cím, dátum, mérők. Csak JSON válasz!"
   });
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json"
-    },
-    body: JSON.stringify({
-      model:"claude-sonnet-4-6",
-      max_tokens:1200,
-      system:"Csak JSON-t adsz vissza.",
-      messages:[{ role:"user", content }]
-    })
-  });
+  const res = await fetch("/api/chat", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    message: "Kinyerés: cím, dátum, mérők. Csak JSON válasz!\n\n" + JSON.stringify(content)
+  })
+});
 
   const data = await res.json();
   const text = data.content[0].text;
