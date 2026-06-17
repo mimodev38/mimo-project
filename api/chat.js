@@ -28,7 +28,6 @@ export default async function handler(req, res) {
 
 const data = await response.json();
 
-// 🔴 EZ AZ ÚJ RÉSZ (HIBAKEZELÉS)
 if (!response.ok) {
   const err = await response.text();
 
@@ -37,12 +36,10 @@ if (!response.ok) {
   });
 }
 
-// 🟢 AI válasz kinyerése
 const reply =
   data.choices?.[0]?.message?.content ??
   JSON.stringify(data);
 
-// 🟢 visszaküldés frontendnek
 return res.status(200).json({
   reply: reply
 });
