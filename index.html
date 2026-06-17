@@ -172,13 +172,19 @@ const list = document.getElementById('filelist');
 const btn = document.getElementById('btn');
 const status = document.getElementById('status');
 
-dropzone.onclick = () => input.click();
+dropzone.addEventListener("click", () => {
+  input.click();
+});
 
-dropzone.ondragover = e => e.preventDefault();
-dropzone.ondrop = e => {
+dropzone.addEventListener("dragover", (e) => {
   e.preventDefault();
+});
+
+dropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
   handle(e.dataTransfer.files);
-};
+});
 
 input.onchange = e => handle(e.target.files);
 
