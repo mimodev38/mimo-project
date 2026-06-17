@@ -254,7 +254,15 @@ btn.onclick = async () => {
 
   let json;
   try {
-    json = JSON.parse(data.reply);
+    let text = data.reply || JSON.stringify(data);
+
+try {
+  json = JSON.parse(text);
+} catch (e) {
+  console.log("NEM JSON:", text);
+  status.textContent = text;
+  return;
+}
   } catch (e) {
     status.textContent = data.reply || JSON.stringify(data);
     return;
