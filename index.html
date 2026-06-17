@@ -139,7 +139,7 @@
     Húzd ide a fájlokat vagy kattints
   </div>
 
-  <input type="file" id="fileInput" multiple hidden>
+  <input type="file" id="fileInput" multiple>
 
   <div class="filelist" id="filelist"></div>
 
@@ -172,8 +172,10 @@ const list = document.getElementById('filelist');
 const btn = document.getElementById('btn');
 const status = document.getElementById('status');
 
-dropzone.addEventListener("click", () => {
-  input.click();
+dropzone.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  input.dispatchEvent(new MouseEvent("click"));
 });
 
 dropzone.addEventListener("dragover", (e) => {
