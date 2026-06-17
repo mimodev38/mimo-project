@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8" />
+
+<title>Mellékmérő-átírás – Gyors kivonat</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root{
+  --bg:#EEF3F1;
+  --surface:#FFFFFF;
+  --surface-soft:#F5F9F7;
+  --ink:#16302C;
+  --ink-soft:#5B7872;
+  --border:#D7E2DE;
+  --teal:#0F766E;
+  --teal-dark:#0B5A54;
+  --amber-bg:#FBF1E2;
+  --amber-border:#EAD2A0;
+  --amber-ink:#7C4A12;
+  --error:#B42318;
+  --meter-bg:#0B2B27;
+  --meter-digit:#5EEAD4;
+  --radius:14px;
+  --shadow:0 1px 2px rgba(20,43,39,.05), 0 10px 28px -16px rgba(20,43,39,.18);
+}
+
+*{ box-sizing:border-box; }
+
+.page{
+  min-height:100%;
+  background:var(--bg);
+  font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  color:var(--ink);
+  padding:32px 18px 64px;
+}
+
+.app{ max-width:600px; margin:0 auto; }
+
+.eyebrow{
+  font-family:'Space Grotesk','Segoe UI',sans-serif;
+  font-weight:600;
+  font-size:.74rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--teal-dark);
+}
+
+.head h1{
+  font-family:'Space Grotesk','Segoe UI',sans-serif;
+  font-weight:700;
+  font-size:1.7rem;
+}
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:22px;
+}
+
+.dropzone{
+  border:1.5px dashed var(--border);
+  border-radius:12px;
+  padding:28px 16px;
+  text-align:center;
+  cursor:pointer;
+  background:var(--surface-soft);
+}
+
+.filelist{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+
+.chip{
+  display:flex;
+  gap:6px;
+  padding:6px 10px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:#fff;
+}
+
+.btn{
+  width:100%;
+  margin-top:16px;
+  padding:12px;
+  background:var(--teal);
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+.btn:disabled{ background:#ccc; cursor:not-allowed; }
+
+.status{ margin-top:10px; font-size:.85rem; }
+
+.meter{
+  border:1px solid var(--border);
+  padding:12px;
+  border-radius:10px;
+  margin-top:10px;
+  background:var(--surface-soft);
+}
+
+.meter-type{
+  font-weight:600;
+  color:var(--teal-dark);
+  margin-bottom:6px;
+}
+
+.meter-digits{
+  font-family:monospace;
+  font-size:1.2rem;
+  color:var(--meter-digit);
+  background:var(--meter-bg);
+  padding:6px;
+  display:inline-block;
+  border-radius:6px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+<div class="app">
+
+<div class="head">
+  <span class="eyebrow">Mellékmérő-átírás</span>
+  <h1>Gyors kivonat</h1>
+</div>
+
+<div class="card" id="uploadCard">
+
+  <div class="dropzone" id="dropzone">
+    Húzd ide a fájlokat vagy kattints
+  </div>
+
+  <input type="file" id="fileInput" multiple hidden>
+
+  <div class="filelist" id="filelist"></div>
+
+  <button class="btn" id="btn" disabled>Adatok kiolvasása</button>
+
+  <div class="status" id="status"></div>
+
+</div>
+
+<div class="card" id="resultCard" style="display:none">
+
+  <div class="eyebrow">Eredmény</div>
+
+  <p><b>Cím:</b> <span id="cim"></span></p>
+  <p><b>Dátum:</b> <span id="datum"></span></p>
+
+  <div id="meters"></div>
+
+</div>
+
+</div>
+</div>
+
+<script>
+let files = [];
+
+const dropzone = document.getElementById('dropzone');
+const input = document.getElementById('fileInput');
+const list = document.getElementById('filelist');
+const btn = document.getElementById('btn');
+const status = document.getElementById('status');
+
+dropzone.onclick = () => input.click();
+
+dropzone.ondragover = e => e.preventDefault();
+dropzone.ondrop = e => {
+  e.preventDefault();
+  handle(e.dataTransfer.files);
+};
+
+input.onchange = e => handle(e.target.files);
+
+function handle(fileList){
+  for(let f of fileList){
+    const reader = new FileReader();
+    reader.onload = () => {
+      files.push({
+        name: f.name,
+        type: f.type,
+        data: reader.result.split(',')[1]
+      });
+      render();
+    };
+    reader.readAsDataURL(f);
+  }
+}
+
+function render(){
+  list.innerHTML = '';
+  files.forEach((f,i)=>{
+    const div = document.createElement('div');
+    div.className = 'chip';
+    div.innerHTML = f.name + ' <button>×</button>';
+    div.querySelector('button').onclick = () => {
+      files.splice(i,1);
+      render();
+    };
+    list.appendChild(div);
+  });
+
+  btn.disabled = files.length === 0;
+}
+
+btn.onclick = async () => {
+
+  status.textContent = "Feldolgozás...";
+
+  const content = files.map(f => ({
+    type: f.type.startsWith('image') ? 'image' : 'document',
+    source: {
+      type: 'base64',
+      media_type: f.type,
+      data: f.data
+    }
+  }));
+
+  content.push({
+    type: "text",
+    text: "Kinyerés: cím, dátum, mérők. Csak JSON válasz!"
+  });
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json"
+    },
+    body: JSON.stringify({
+      model:"claude-sonnet-4-6",
+      max_tokens:1200,
+      system:"Csak JSON-t adsz vissza.",
+      messages:[{ role:"user", content }]
+    })
+  });
+
+  const data = await res.json();
+  const text = data.content[0].text;
+
+  const json = JSON.parse(text.replace(/```/g,''));
+
+  document.getElementById('uploadCard').style.display="none";
+  document.getElementById('resultCard').style.display="block";
+
+  document.getElementById('cim').textContent = json.cim || '';
+  document.getElementById('datum').textContent = json.birtokbaadas_datuma || '';
+
+  const meters = document.getElementById('meters');
+  meters.innerHTML = '';
+
+  (json.merok || []).forEach(m=>{
+    const div = document.createElement('div');
+    div.className = 'meter';
+    div.innerHTML = `
+      <div class="meter-type">${m.tipus || 'Mérő'}</div>
+      <div class="meter-digits">${m.mero_allas || '—'}</div>
+    `;
+    meters.appendChild(div);
+  });
+
+  status.textContent = "";
+};
+
+</script>
+
+</body>
+</html>
