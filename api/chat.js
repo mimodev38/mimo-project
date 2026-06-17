@@ -26,15 +26,27 @@ export default async function handler(req, res) {
       })
     });
 
-    const data = await response.json();
+const data = await response.json();
 
+// 🔴 EZ AZ ÚJ RÉSZ (HIBAKEZELÉS)
+if (!response.ok) {
+  const err = await response.text();
+
+  return res.status(500).json({
+    reply: "API hiba történt: " + err
+  });
+}
+
+// 🟢 AI válasz kinyerése
 const reply =
-  data.choices?.[0]?.message?.content ||
+  data.choices?.[0]?.message?.content ??
   JSON.stringify(data);
 
-res.status(200).json({
+// 🟢 visszaküldés frontendnek
+return res.status(200).json({
   reply: reply
 });
+    
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
