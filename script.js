@@ -80,6 +80,14 @@ function setStatus(msg, error=false){ statusEl.textContent = msg; statusEl.class
 /* ===== PROCESS ===== */
 processBtn.addEventListener('click', async () => {
   if (!files.length) return;
+
+  // Ha nincs beégetett kulcsunk, bekérjük a felhasználótól egy felugró ablakban, így teljesen biztonságos!
+  const userKey = prompt("Kérlek, add meg az OpenAI API kulcsodat (sk-proj-...):");
+  if (!userKey) {
+    setStatus("A feldolgozáshoz szükség van az API kulcsra!", true);
+    return;
+  }
+
   processBtn.disabled = true;
   setStatus("Feldolgozás...", false);
 
@@ -90,23 +98,33 @@ processBtn.addEventListener('click', async () => {
 
   content.push({
     type: "text",
-    text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Ne használj kódblokkot, csak a nyers JSON szöveget."
+    text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak a nyers JSON szöveget add vissza, ne használj semmilyen markdown kódblokkot (szóval NE legyen ```json a szövegben)."
   });
 
   try {
-    const res = await fetch('/api/chat', {
+    // Nyilvános CORS proxy híd használata, hogy a böngésző ne tiltson le minket
+    const proxyUrl = "https://corsproxy.io?";
+    const targetUrl = "https://openai.com";
+
+    const res = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ messages: [{ role: 'user', content }] })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userKey.trim()}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: content }]
+      })
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.error || "Hiba történt a szerveren");
+      throw new Error(data.error?.message || "Hiba történt az OpenAI hívás során");
     }
 
-    const text = data.reply;
+    const text = data.choices[0].message.content;
     const json = JSON.parse(text.trim());
 
     renderResult(json);
