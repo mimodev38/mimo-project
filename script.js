@@ -63,13 +63,13 @@ function readFile(f) {
 
       const cleanName = f.name.toLowerCase().replace(/[^a-z0-9.]/g, '_');
 
-      files.push({
-        id: crypto.randomUUID(),
-        name: cleanName,
-        type: 'image/jpeg',
-        base64: canvas.toDataURL('image/jpeg', 0.6), // Szabványos data URI-t generál
-        size: f.size
-      });
+    files.push({
+  id: crypto.randomUUID(),
+  name: cleanName,
+  type: 'image/jpeg',
+  base64: canvas.toDataURL('image/jpeg', 0.4),
+  size: f.size
+});
       renderList();
     };
   };
