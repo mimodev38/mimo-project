@@ -257,16 +257,16 @@
 <script>
 (function(){
   const MAX_FILES = 15;
-const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25 MB
+  const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25 MB
 
-const ACCEPTED = [
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'application/pdf'
-];
+  const ACCEPTED = [
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'application/pdf'
+  ];
 
-let files = [];
+  let files = [];
 
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('fileInput');
@@ -281,102 +281,113 @@ let files = [];
   const metersEl = document.getElementById('meters');
   const noticeEl = document.getElementById('notice');
 
-dropzone.addEventListener('click', (e) => {
-  e.preventDefault();
-  fileInput.focus();
-  fileInput.click();
-});
+  dropzone.addEventListener('click', () => fileInput.click());
   dropzone.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      fileInput.click();
+    }
   });
-  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('drag');
+  });
+
   dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+
   dropzone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropzone.classList.remove('drag');
     handleFiles(e.dataTransfer.files);
   });
+
   fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
   function handleFiles(fileListObj){
-  const incoming = Array.from(fileListObj);
+    const incoming = Array.from(fileListObj);
 
-  let currentSize = files.reduce(
-    (sum, f) => sum + (f.originalSize || 0),
-    0
-  );
+    let currentSize = files.reduce(
+      (sum, f) => sum + (f.originalSize || 0),
+      0
+    );
 
-  for (const f of incoming){
+    for (const f of incoming){
 
-    if (files.length >= MAX_FILES){
-      setStatus(`Legfeljebb ${MAX_FILES} fájlt tudok egyszerre nézni.`, 'error');
-      break;
+      if (files.length >= MAX_FILES){
+        setStatus(`Legfeljebb ${MAX_FILES} fájlt tudok egyszerre nézni.`, 'error');
+        break;
+      }
+
+      if (!ACCEPTED.includes(f.type)){
+        setStatus(`A ${f.name} formátuma nem támogatott.`, 'error');
+        continue;
+      }
+
+      if (currentSize + f.size > MAX_TOTAL_SIZE) {
+        setStatus(`"${f.name}" túl nagy.`, 'error');
+        continue;
+      }
+
+      currentSize += f.size;
+      readAsBase64(f);
     }
 
-    if (!ACCEPTED.includes(f.type)){
-      setStatus(`A ${f.name} formátuma nem támogatott. PNG, JPG vagy PDF kell.`, 'error');
-      continue;
-    }
-
-    if (currentSize + f.size > MAX_TOTAL_SIZE) {
-      setStatus(`"${f.name}" már nem fér bele a 25 MB-os keretbe.`, 'error');
-      continue;
-    }
-
-    currentSize += f.size;
-    readAsBase64(f);
+    fileInput.value = '';
   }
 
-  fileInput.value = '';
-}
   function readAsBase64(f){
     const reader = new FileReader();
+
     reader.onload = () => {
       const base64 = reader.result.split(',')[1];
-     files.push({
-  id: Math.random().toString(36).slice(2),
-  name: f.name,
-  mediaType: f.type,
-  base64,
-  originalSize: f.size,
-  kind: f.type === 'application/pdf' ? 'document' : 'image'
-});
+
+      files.push({
+        id: Math.random().toString(36).slice(2),
+        name: f.name,
+        mediaType: f.type,
+        base64,
+        originalSize: f.size,
+        kind: f.type === 'application/pdf' ? 'document' : 'image'
+      });
+
       renderFileList();
     };
+
     reader.onerror = () => setStatus(`Nem sikerült beolvasni: ${f.name}`, 'error');
     reader.readAsDataURL(f);
   }
 
   function renderFileList(){
     filelistEl.innerHTML = '';
+
     files.forEach(f => {
       const chip = document.createElement('span');
       chip.className = 'chip';
+
       const label = document.createElement('span');
       label.textContent = f.name;
+
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
-      removeBtn.setAttribute('aria-label', 'Eltávolítás');
       removeBtn.textContent = '×';
+
       removeBtn.addEventListener('click', () => {
         files = files.filter(x => x.id !== f.id);
         renderFileList();
       });
+
       chip.appendChild(label);
       chip.appendChild(removeBtn);
       filelistEl.appendChild(chip);
     });
+
     processBtn.disabled = files.length === 0;
-    if (files.length === 0) setStatus('', '');
   }
 
   function setStatus(text, kind){
     statusEl.textContent = text;
     statusEl.className = 'status' + (kind ? ' ' + kind : '');
-  }
-
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
   resetBtn.addEventListener('click', () => {
@@ -388,98 +399,88 @@ dropzone.addEventListener('click', (e) => {
   });
 
   processBtn.addEventListener('click', async () => {
-    if (files.length === 0) return;
+    if (!files.length) return;
+
     processBtn.disabled = true;
-    setStatus('Dokumentumok olvasása…', 'loading');
+    setStatus('Dokumentumok feldolgozása...', 'loading');
 
- const content = [];
+    const content = [];
 
-for (const f of files) {
-  if (!f.base64) continue;
-
-  if (f.kind === 'image') {
-    content.push({
-      type: 'image_url',
-      image_url: {
-        url: `data:${f.mediaType};base64,${f.base64}`
+    for (const f of files) {
+      if (f.kind === 'image') {
+        content.push({
+          type: 'image_url',
+          image_url: {
+            url: `data:${f.mediaType};base64,${f.base64}`
+          }
+        });
+      } else {
+        content.push({
+          type: 'text',
+          text: `[PDF: ${f.name}]`
+        });
       }
-    });
-  }
+    }
 
-  if (f.kind === 'document') {
     content.push({
       type: 'text',
-      text: `[PDF csatolva: ${f.name}]`
-    });
-  }
-}
-
-// safety check
-if (content.length === 0) {
-  setStatus("Nincs feldolgozható fájl.", "error");
-  processBtn.disabled = false;
-  return;
-}
-    content.push({
-      type: 'text',
-      text:
-        'A csatolt dokumentumok egy mellékmérő-átírási ügyhöz tartoznak (jegyzőkönyv, e-bejelentő és/vagy tulajdoni lap). ' +
-        'Kizárólag az alábbi négy adatkört keresd ki, semmi mást ne emelj ki a dokumentumokból:\n' +
-        '1) a felhasználási hely / ingatlan pontos címe\n' +
-        '2) a birtokbaadás dátuma (a jegyzőkönyvön szereplő dátum)\n' +
-        '3) minden mérő gyári száma\n' +
-        '4) minden mérő mérőállása és mértékegysége\n\n' +
-        'Válaszolj KIZÁRÓLAG ezzel a JSON struktúrával, magyarázat vagy más szöveg nélkül:\n' +
-        '{"cim": string|null, "birtokbaadas_datuma": string|null, "merok": [{"tipus": string, "gyari_szam": string|null, "mero_allas": string|null, "mertekegyseg": string|null}], "hianyzo_vagy_bizonytalan": [string]}\n\n' +
-        'Ha egy mérőhöz nincs egyedi mérő (pl. közös költségben van, havi alapdíjas), a tipus mezőbe írd be a mérő nevét, a gyari_szam és mero_allas legyen null, és jelezd ezt a hianyzo_vagy_bizonytalan tömbben is. ' +
-        'Ha valami nem olvasható egyértelműen vagy hiányzik, SOHA ne találj ki adatot: tegyél null értéket, és sorold fel a hianyzo_vagy_bizonytalan tömbben, hogy mi az.\n\n' +
-        'NAGYON FONTOS: a válaszod kizárólag a "{" karakterrel kezdődjön és a "}" karakterrel végződjön. Ne írj elé semmilyen bevezetőt, magyarázatot vagy kódblokk-jelölést (```), és utána se írj semmit.'
+      text: 'Kérlek JSON-ben válaszolj...'
     });
 
     try {
-     const response = await fetch('/api/chat', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({
-  model: 'gpt-4o-mini',
-  max_tokens: 1500,
-  messages: [
-    {
-      role: 'user',
-      content
-    }
-  ]
-});
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          max_tokens: 1500,
+          messages: [
+            {
+              role: 'user',
+              content
+            }
+          ]
+        })
+      });
 
-      if (!response.ok){
-        throw new Error('A szolgáltatás nem válaszolt (HTTP ' + response.status + ').');
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
       }
 
       const data = await response.json();
-      const textBlock =
-  Array.isArray(data?.content)
-    ? data.content.find(b => b && b.type === 'text')
-    : null;
-      
-      if (!textBlock) throw new Error('Nem érkezett szöveges válasz.');
+
+      const textBlock = Array.isArray(data?.content)
+        ? data.content.find(b => b?.type === 'text')
+        : null;
+
+      if (!textBlock) throw new Error('Nincs válasz.');
 
       let cleaned = textBlock.text.replace(/```json|```/g, '').trim();
+
       const start = cleaned.indexOf('{');
       const end = cleaned.lastIndexOf('}');
-      if (start !== -1 && end !== -1) cleaned = cleaned.slice(start, end + 1);
+
+      if (start !== -1 && end !== -1) {
+        cleaned = cleaned.slice(start, end + 1);
+      }
 
       const parsed = JSON.parse(cleaned);
 
       renderResult(parsed);
+
       uploadCard.hidden = true;
       resultCard.hidden = false;
       setStatus('', '');
-    } catch (err){
+
+    } catch (err) {
       console.error(err);
-      setStatus('Nem sikerült kiolvasni az adatokat. Ellenőrizd, hogy jól látható-e a feltöltött dokumentum, és próbáld újra. (Részlet: ' + err.message + ')', 'error');
-    } finally {
-      processBtn.disabled = files.length === 0;
+      setStatus(
+        'Hiba: ' + err.message,
+        'error'
+      );
     }
+
+    processBtn.disabled = false;
   });
 
   function renderResult(data){
@@ -487,32 +488,26 @@ if (content.length === 0) {
     fDatum.textContent = data.birtokbaadas_datuma || 'Nincs adat';
 
     metersEl.innerHTML = '';
+
     (data.merok || []).forEach(m => {
-      const card = document.createElement('div');
-      card.className = 'meter';
-      const serialHtml = m.gyari_szam ? `<b>${escapeHtml(m.gyari_szam)}</b>` : `<i>nincs adat</i>`;
-      const reading = m.mero_allas ? escapeHtml(m.mero_allas) : '—';
-      const unit = m.mertekegyseg ? escapeHtml(m.mertekegyseg) : '';
-      card.innerHTML =
-        `<div class="meter-type">${escapeHtml(m.tipus || 'Mérő')}</div>` +
-        `<div class="meter-serial">Gyári szám: ${serialHtml}</div>` +
-        `<div class="meter-display">` +
-          `<span class="meter-digits">${reading}</span>` +
-          `<span class="meter-unit">${unit}</span>` +
-        `</div>`;
-      metersEl.appendChild(card);
+      const div = document.createElement('div');
+      div.className = 'meter';
+
+      div.innerHTML = `
+        <div class="meter-type">${m.tipus || 'Mérő'}</div>
+        <div class="meter-serial">Gyári szám: ${m.gyari_szam || 'nincs'}</div>
+        <div class="meter-display">
+          <span class="meter-digits">${m.mero_allas || '—'}</span>
+          <span class="meter-unit">${m.mertekegyseg || ''}</span>
+        </div>
+      `;
+
+      metersEl.appendChild(div);
     });
 
-    const notes = data.hianyzo_vagy_bizonytalan || [];
-    if (notes.length){
-      noticeEl.hidden = false;
-      noticeEl.innerHTML = '<strong>Hiányzó vagy bizonytalan adat</strong>' +
-        notes.map(n => `<div>${escapeHtml(n)}</div>`).join('');
-    } else {
-      noticeEl.hidden = true;
-      noticeEl.innerHTML = '';
-    }
+    noticeEl.hidden = true;
   }
+
 })();
 </script>
 </body>
