@@ -24,61 +24,29 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Hiányzó vagy sérült adatformátum!" });
     }
 
-    const imagePart = userContent.find(c => c.type === 'image_url');
-    const textPart = userContent.find(c => c.type === 'text');
-
-    if (!imagePart || !imagePart.image_url?.url) {
-      return res.status(400).json({ error: "Nem található kép a kérésben!" });
-    }
-
-    // Képadatok tiszta szétválasztása
-    const dataUrl = imagePart.image_url.url;
-    const mimeType = dataUrl.substring(dataUrl.indexOf(":") + 1, dataUrl.indexOf(";"));
-    const base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1);
-    const promptText = textPart?.text || "Extract JSON.";
-
-    // ITT JAVÍTVA: Az OpenRouter hivatalos, többváltozós (multimodal) üzenetformátumát használjuk
+    // Biztonságos hívás az OpenRouter felé a kötelező referer azonosítókkal
     const response = await fetch("https://openrouter.ai", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey.trim()}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://vercel.app", // Megmondja az OpenRouternek, honnan jön a kérés
+        "X-Title": "Mimo Project"                            // A projekted neve
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash:free",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: promptText
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mimeType};base64,${base64Data}`
-                }
-              }
-            ]
-          }
-        ]
+        messages: [{ role: "user", content: userContent }]
       })
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      return res.status(response.status).json({ error: `OpenRouter elutasítás: ${errText}` });
+      return res.status(response.status).json({ error: `OpenRouter hiba: ${errText}` });
     }
 
     const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content || "";
     
-    // Ha az OpenRouter üres vagy hibás választ adna vissza, lekezeljük
-    if (!data.choices || data.choices.length === 0) {
-      return res.status(500).json({ error: "Az OpenRouter nem küldött értékelhető választ: " + JSON.stringify(data) });
-    }
-
-    const reply = data.choices[0]?.message?.content ?? "";
     return res.status(200).json({ reply: reply });
     
   } catch (err) {
