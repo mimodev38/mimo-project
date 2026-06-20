@@ -5,7 +5,6 @@ const ACCEPTED = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
 let files = [];
 let isProcessingFiles = false;
 
-/* ===== DOM ELEMENTS ===== */
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
 const filelist = document.getElementById('filelist');
@@ -15,14 +14,12 @@ const resultCard = document.getElementById('resultCard');
 const resultEl = document.getElementById('result');
 const resetBtn = document.getElementById('resetBtn');
 
-/* ===== DROPZONE EVENTS ===== */
 dropzone.addEventListener('click', () => fileInput.click());
 dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
 dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
 fileInput.addEventListener('change', e => handleFiles(e.target.files));
 
-/* ===== FILE HANDLING ===== */
 function handleFiles(list){
   if (isProcessingFiles) return;
   isProcessingFiles = true;
@@ -41,7 +38,6 @@ function handleFiles(list){
   renderList();
 }
 
-/* ===== INTELLIGENS KÉPTÖMÖRÍTÉS A BÖNGÉSZŐBEN (Vercel 4.5MB limit hiba ellen) ===== */
 function readFile(f) {
   const reader = new FileReader();
   reader.onload = async () => {
@@ -51,10 +47,8 @@ function readFile(f) {
       const canvas = document.createElement('canvas');
       let width = img.width;
       let height = img.height;
-
-      // Ha a kép túl nagy, lekicsinyítjük a felbontást (max 1200px szélességre vagy magasságra)
-      const MAX_WIDTH = 1200;
-      const MAX_HEIGHT = 1200;
+      const MAX_WIDTH = 1000;
+      const MAX_HEIGHT = 1000;
 
       if (width > height) {
         if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
@@ -67,20 +61,16 @@ function readFile(f) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Kép exportálása tömörített JPEG formátumban (80%-os minőség)
-      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-
       files.push({
         id: crypto.randomUUID(),
         name: f.name,
         type: 'image/jpeg',
-        base64: compressedBase64,
+        base64: canvas.toDataURL('image/jpeg', 0.7),
         size: f.size
       });
       renderList();
     };
   };
-  reader.onerror = () => setStatus(`Hiba: ${f.name}`, true);
   reader.readAsDataURL(f);
 }
 
@@ -98,7 +88,6 @@ function renderList(){
 window.removeFile = (id) => { files = files.filter(f => f.id !== id); renderList(); };
 function setStatus(msg, error=false){ statusEl.textContent = msg; statusEl.className = 'status' + (error ? ' error' : ''); }
 
-/* ===== PROCESSOR ===== */
 processBtn.addEventListener('click', async () => {
   if (!files.length) return;
   processBtn.disabled = true;
@@ -124,14 +113,13 @@ processBtn.addEventListener('click', async () => {
 
       const data = await res.json();
 
-if (!res.ok) {
-  throw new Error(data.error || `Hiba történt a(z) ${f.name} feldolgozásakor.`);
-}
+      if (!res.ok) {
+        throw new Error(data.error || `Hiba történt a(z) ${f.name} feldolgozásakor.`);
+      }
 
-const rawText = data.reply || "";
-const cleanText = rawText.replace(/```json|```/g, '').trim();
-const json = JSON.parse(cleanText.slice(cleanText.indexOf('{'), cleanText.lastIndexOf('}') + 1));
-
+      const rawText = data.reply || "";
+      const cleanText = rawText.replace(/```json|```/g, '').trim();
+      const json = JSON.parse(cleanText.slice(cleanText.indexOf('{'), cleanText.lastIndexOf('}') + 1));
       
       if (json.cim && json.cim !== "-") finalCim = json.cim;
       if (json.birtokbaadas_datuma && json.birtokbaadas_datuma !== "-") finalDatum = json.birtokbaadas_datuma;
