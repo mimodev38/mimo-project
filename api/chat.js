@@ -34,9 +34,10 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`
       },
-      body: JSON.stringify({
+            body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: messages
+        messages: messages,
+        response_format: { type: "json_object" }
       })
     });
 
