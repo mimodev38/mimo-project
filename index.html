@@ -388,43 +388,36 @@ let files = [];
     processBtn.disabled = true;
     setStatus('Dokumentumok olvasása…', 'loading');
 
-   const content = [];
+  const content = [];
 
 for (const f of files) {
   if (!f.base64) continue;
 
   if (f.kind === 'document') {
+    // ⚠️ PDF-et TEXT-ként küldjük (stabilabb minden backendhez)
     content.push({
-      type: 'document',
-      source: {
-        type: 'base64',
-        media_type: 'application/pdf',
-        data: f.base64
-      }
+      type: 'text',
+      text: `[PDF csatolva: ${f.name}]`
     });
     continue;
   }
 
-  // image check (extra safety)
-  if (f.mediaType && f.base64) {
+  if (f.kind === 'image') {
     content.push({
-      type: 'image',
-      source: {
-        type: 'base64',
-        media_type: f.mediaType,
-        data: f.base64
+      type: 'image_url',
+      image_url: {
+        url: `data:${f.mediaType};base64,${f.base64}`
       }
     });
   }
 }
 
-// ha valamiért üres lenne → ne menjen request
+// safety check
 if (content.length === 0) {
   setStatus("Nincs feldolgozható fájl.", "error");
   processBtn.disabled = false;
   return;
 }
-
     content.push({
       type: 'text',
       text:
@@ -446,16 +439,16 @@ if (content.length === 0) {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1500,
-    system: 'Magyar nyelvű ügyviteli dokumentumokat olvasol ki. Csak JSON-t adj vissza.',
-    messages: [
-      {
-        role: 'user',
-        content
-      }
-    ]
-  })
+  model: 'claude-sonnet-4-6',
+  max_tokens: 1500,
+  system: 'Magyar nyelvű ügyviteli dokumentumokat elemzel. Csak JSON-t adj vissza.',
+  messages: [
+    {
+      role: 'user',
+      content
+    }
+  ]
+})
 });
 
       if (!response.ok){
