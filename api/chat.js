@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // CORS biztonsági beállítások a böngészőhöz
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -15,27 +14,56 @@ export default async function handler(req, res) {
   try {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "Hiányzó OPENAI / OPENROUTER API kulcs a Vercel-en!" });
+      return res.status(500).json({ error: "Hiányzó OPENROUTER_API_KEY a Vercel-en!" });
     }
 
     const { messages } = req.body;
     const userContent = messages?.[0]?.content;
     
     if (!userContent || !Array.isArray(userContent)) {
-      return res.status(400).json({ error: "Hiányzó vagy sérült adatformátum a kérésben!" });
+      return res.status(400).json({ error: "Hiányzó vagy sérült adatformátum!" });
     }
 
-    // ITT JAVÍTVA: A pontos API végpontot hívjuk meg a sima főoldal helyett
+    const imagePart = userContent.find(c => c.type === 'image_url');
+    const textPart = userContent.find(c => c.type === 'text');
+
+    if (!imagePart || !imagePart.image_url?.url) {
+      return res.status(400).json({ error: "Nem található kép a kérésben!" });
+    }
+
+    // Kicsomagoljuk a tiszta adatokat a Google/OpenRouter szabvány szerint
+    const dataUrl = imagePart.image_url.url;
+    const mimeType = dataUrl.substring(dataUrl.indexOf(":") + 1, dataUrl.indexOf(";"));
+    const base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1);
+    const promptText = textPart?.text || "Extract JSON.";
+
+    // Átalakítjuk a kérést az OpenRouter által elvárt hivatalos formátumra
     const response = await fetch("https://openrouter.ai", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey.trim()}`,
         "Content-Type": "application/json"
       },
-     body: JSON.stringify({
-  model: "google/gemini-2.5-flash:free",
-  messages: [{ role: "user", content: userContent }]
-})
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash:free",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: promptText
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:${mimeType};base64,${base64Data}`
+                }
+              }
+            ]
+          }
+        ]
+      })
     });
 
     if (!response.ok) {
