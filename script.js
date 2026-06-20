@@ -5,10 +5,6 @@ const ACCEPTED = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
 let files = [];
 let isProcessingFiles = false;
 
-// Kérlek, vágd ketté az OpenRouter kulcsodat (sk-or-v1-...) és másold be ide a két felét!
-const KEY_PART1 = "sk-or-v1-4f2471cd05e20d42b7a20da63b9b23";
-const KEY_PART2 = "f278c6c951739da6b54d76a33d574ea4bb";
-
 /* ===== DOM ELEMENTS ===== */
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
@@ -96,7 +92,7 @@ function renderList(){
 window.removeFile = (id) => { files = files.filter(f => f.id !== id); renderList(); };
 function setStatus(msg, error=false){ statusEl.textContent = msg; statusEl.className = 'status' + (error ? ' error' : ''); }
 
-/* ===== KÖZVETLEN OPENROUTER PROCESSOR (Szerver nélkül) ===== */
+/* ===== PROCESSOR ===== */
 processBtn.addEventListener('click', async () => {
   if (!files.length) return;
   processBtn.disabled = true;
@@ -104,39 +100,30 @@ processBtn.addEventListener('click', async () => {
   let finalCim = "-";
   let finalDatum = "-";
 
-  const fullKey = KEY_PART1.trim() + KEY_PART2.trim();
-
   for (let i = 0; i < files.length; i++) {
     const f = files[i];
     setStatus(`Fájl feldolgozása (${i + 1}/${files.length}): ${f.name}...`, false);
 
+    const content = [
+      { type: 'image_url', image_url: { url: f.base64 } },
+      { type: "text", text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, markdown kódblokk jelölések nélkül!" }
+    ];
+
     try {
-      // Közvetlen hívás az OpenRouter felé a böngészőből
-      const res = await fetch("https://openrouter.ai", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${fullKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "mistralai/pixtral-12b:free",
-          messages: [{
-            role: "user",
-            content: [
-              { type: 'image_url', image_url: { url: f.base64 } },
-              { type: "text", text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, markdown kódblokk jelölések nélkül!" }
-            ]
-          }]
-        })
+      // Az új Next.js API végpont meghívása a főmappából
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ messages: [{ role: 'user', content }] })
       });
 
       if (!res.ok) {
         const errText = await res.text();
-        throw new Error(`OpenRouter elutasítás (${res.status}): ${errText.substring(0, 100)}`);
+        throw new Error(`Szerver hiba (${res.status}): ${errText.substring(0, 100)}`);
       }
 
       const data = await res.json();
-      const rawText = data.choices?.[0]?.message?.content || "";
+      const rawText = data.reply || "";
       const cleanText = rawText.replace(/```json|```/g, '').trim();
       const json = JSON.parse(cleanText.slice(cleanText.indexOf('{'), cleanText.lastIndexOf('}') + 1));
       
@@ -156,6 +143,7 @@ processBtn.addEventListener('click', async () => {
   processBtn.disabled = false;
 });
 
+// Eredmény kiírása
 function renderResult(data){
   resultEl.innerHTML = `
     <div><b>Cím:</b> ${data.cim || '-'}</div>
