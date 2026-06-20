@@ -38,22 +38,17 @@ function handleFiles(list){
   renderList();
 }
 
-/* ===== BIZTONSÁGOS KÉPBEOLVASÁS HIBAKEZELŐVEL ===== */
 function readFile(f) {
   const reader = new FileReader();
   reader.onload = async () => {
-    const cleanName = f.name.toLowerCase().replace(/[^a-z0-9.]/g, '_');
-    
     const img = new Image();
     img.src = reader.result;
-    
-    // Ha a kép szabályos, lekicsinyítjük a Vercel-limit miatt
     img.onload = () => {
       const canvas = document.createElement('canvas');
       let width = img.width;
       let height = img.height;
-      const MAX_WIDTH = 500;
-      const MAX_HEIGHT = 500;
+      const MAX_WIDTH = 800;
+      const MAX_HEIGHT = 800;
 
       if (width > height) {
         if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
@@ -66,23 +61,13 @@ function readFile(f) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
 
+      const cleanName = f.name.toLowerCase().replace(/[^a-z0-9.]/g, '_');
+
       files.push({
         id: crypto.randomUUID(),
         name: cleanName,
         type: 'image/jpeg',
-        base64: canvas.toDataURL('image/jpeg', 0.5),
-        size: f.size
-      });
-      renderList();
-    };
-
-    // BIZTONSÁGI MENTŐÖV: Ha a fájl nem igazi kép (pl. PDF vagy hibás metaadat), nyersen küldjük el!
-    img.onerror = () => {
-      files.push({
-        id: crypto.randomUUID(),
-        name: cleanName,
-        type: f.type,
-        base64: reader.result,
+        base64: canvas.toDataURL('image/jpeg', 0.6), // Szabványos data URI-t generál
         size: f.size
       });
       renderList();
@@ -118,7 +103,7 @@ processBtn.addEventListener('click', async () => {
 
     const content = [
       { type: 'image_url', image_url: { url: f.base64 } },
-      { type: "text", text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, kódblokk jelölések nélkül!" }
+      { type: "text", text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, markdown blokk nélkül!" }
     ];
 
     try {
@@ -128,12 +113,13 @@ processBtn.addEventListener('click', async () => {
         body: JSON.stringify({ messages: [{ role: 'user', content }] })
       });
 
-      const data = await res.json();
-
+      // Először ellenőrizzük a státuszt, hogy ne JSON-ként akarjunk beolvasni egy HTML hibaoldalt
       if (!res.ok) {
-        throw new Error(data.error || `Hiba történt a(z) ${f.name} feldolgozásakor.`);
+        const errText = await res.text();
+        throw new Error(`Szerver hiba (${res.status}): ${errText.substring(0, 100)}`);
       }
 
+      const data = await res.json();
       const rawText = data.reply || "";
       const cleanText = rawText.replace(/```json|```/g, '').trim();
       const json = JSON.parse(cleanText.slice(cleanText.indexOf('{'), cleanText.lastIndexOf('}') + 1));
