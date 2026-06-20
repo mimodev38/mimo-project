@@ -388,12 +388,42 @@ let files = [];
     processBtn.disabled = true;
     setStatus('Dokumentumok olvasása…', 'loading');
 
-    const content = files.map(f => {
-      if (f.kind === 'document'){
-        return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.base64 } };
+   const content = [];
+
+for (const f of files) {
+  if (!f.base64) continue;
+
+  if (f.kind === 'document') {
+    content.push({
+      type: 'document',
+      source: {
+        type: 'base64',
+        media_type: 'application/pdf',
+        data: f.base64
       }
-      return { type: 'image', source: { type: 'base64', media_type: f.mediaType, data: f.base64 } };
     });
+    continue;
+  }
+
+  // image check (extra safety)
+  if (f.mediaType && f.base64) {
+    content.push({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: f.mediaType,
+        data: f.base64
+      }
+    });
+  }
+}
+
+// ha valamiért üres lenne → ne menjen request
+if (content.length === 0) {
+  setStatus("Nincs feldolgozható fájl.", "error");
+  processBtn.disabled = false;
+  return;
+}
 
     content.push({
       type: 'text',
@@ -412,23 +442,32 @@ let files = [];
     });
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1500,
-          system: 'Magyar nyelvű, vízszolgáltatóhoz kapcsolódó ügyviteli dokumentumokat (jegyzőkönyv, e-bejelentő, tulajdoni lap) olvasol ki. Pontos, tényalapú kivonatot adsz, soha nem találsz ki adatot, és kizárólag a kért JSON-t adod vissza, semmi mást.',
-          messages: [{ role: 'user', content }]
-        })
-      });
+     const response = await fetch('/api/chat', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1500,
+    system: 'Magyar nyelvű ügyviteli dokumentumokat olvasol ki. Csak JSON-t adj vissza.',
+    messages: [
+      {
+        role: 'user',
+        content
+      }
+    ]
+  })
+});
 
       if (!response.ok){
         throw new Error('A szolgáltatás nem válaszolt (HTTP ' + response.status + ').');
       }
 
       const data = await response.json();
-      const textBlock = (data.content || []).find(b => b.type === 'text');
+      const textBlock =
+  Array.isArray(data?.content)
+    ? data.content.find(b => b && b.type === 'text')
+    : null;
+      
       if (!textBlock) throw new Error('Nem érkezett szöveges válasz.');
 
       let cleaned = textBlock.text.replace(/```json|```/g, '').trim();
