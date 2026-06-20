@@ -281,7 +281,11 @@ let files = [];
   const metersEl = document.getElementById('meters');
   const noticeEl = document.getElementById('notice');
 
-  dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('click', (e) => {
+  e.preventDefault();
+  fileInput.focus();
+  fileInput.click();
+});
   dropzone.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
   });
