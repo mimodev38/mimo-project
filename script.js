@@ -11,11 +11,6 @@ const ACCEPTED = [
 let files = [];
 let isProcessingFiles = false;
 
-// Ide másold be a kulcsod első felét (pl. az sk-proj- utáni első 20 karaktert)
-const KEY_PART1 = "sk-proj-NOXasLUfule6eSFrc67LVypex0fl5byqi9-K7WLsRfaayXBxEi700sTIFMJfaPzd9sSHuk";
-// Ide másold be a kulcsod maradék részét a végéig
-const KEY_PART2 = "1ILgT3BlbkFJC-WOObV9GaN7rs4S5L-M1t7QfdDP92bVGcEZFyxrYfcIMuyBGDC8afnrOfxlhVl-s0Jl2LRjUA";
-
 /* ===== DOM ===== */
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
@@ -95,32 +90,24 @@ processBtn.addEventListener('click', async () => {
 
   content.push({
     type: "text",
-    text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Ne használj kódblokkot (szóval ne legyen ```json a válaszban), csak a nyers JSON szöveget add vissza, pl: {\"cim\": \"Minta u. 1\", \"birtokbaadas_datuma\": \"2026-01-01\"}"
+    text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Ne használj kódblokkot, csak a nyers JSON szöveget add vissza."
   });
 
   try {
-    // Trükkös összefűzés a böngésző-biztonság és a GitHub kijátszására
-    const fullKey = KEY_PART1.trim() + KEY_PART2.trim();
-
-    const res = await fetch('https://openai.com', {
+    // Az új Next.js API útvonal meghívása
+    const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${fullKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: content }]
-      })
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ messages: [{ role: 'user', content }] })
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.error?.message || "Hiba történt az OpenAI hívás során");
+      throw new Error(data.error || "Hiba történt a szerveren");
     }
 
-    const text = data.choices[0].message.content;
+    const text = data.reply;
     const json = JSON.parse(text.trim());
 
     renderResult(json);
