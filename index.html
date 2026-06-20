@@ -315,36 +315,16 @@ let files = [];
     }
 
     if (currentSize + f.size > MAX_TOTAL_SIZE) {
-      setStatus(
-        `"${f.name}" már nem fér bele a 25 MB-os keretbe.`,
-        'error'
-      );
+      setStatus(`"${f.name}" már nem fér bele a 25 MB-os keretbe.`, 'error');
       continue;
     }
 
     currentSize += f.size;
-
     readAsBase64(f);
   }
 
   fileInput.value = '';
 }
-if (totalAfterUpload > MAX_TOTAL_SIZE) {
-  setStatus(
-    'A feltöltött fájlok összmérete nem lehet több 25 MB-nál.',
-    'error'
-  );
-  return;
-}
-      if (!ACCEPTED.includes(f.type)){
-        setStatus(`A ${f.name} formátuma nem támogatott. PNG, JPG vagy PDF kell.`, 'error');
-        continue;
-      }
-      readAsBase64(f);
-    }
-    fileInput.value = '';
-  }
-
   function readAsBase64(f){
     const reader = new FileReader();
     reader.onload = () => {
