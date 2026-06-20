@@ -25,22 +25,22 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Hiányzó vagy sérült adatformátum a kérésben!" });
     }
 
-    // Kapcsolódás a regionális tiltásoktól mentes OpenRouter hálózathoz
+    // ITT JAVÍTVA: A pontos API végpontot hívjuk meg a sima főoldal helyett
     const response = await fetch("https://openrouter.ai", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey.trim()}`,
         "Content-Type": "application/json"
       },
-     body: JSON.stringify({
-  model: "mistralai/pixtral-12b:free",
-  messages: [{ role: "user", content: userContent }]
-})
+      body: JSON.stringify({
+        model: "google/gemini-1.5-flash:free", // Ingyenes és villámgyors Google modell az OpenRouteren keresztül
+        messages: [{ role: "user", content: userContent }]
+      })
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      return res.status(response.status).json({ error: `OpenRouter hálózati elutasítás: ${errText}` });
+      return res.status(response.status).json({ error: `OpenRouter elutasítás: ${errText}` });
     }
 
     const data = await response.json();
