@@ -14,10 +14,13 @@ export default async function handler(req, res) {
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "Hiányzik az OPENAI_API_KEY a Vercelből!" });
+      return res.status(500).json({ error: "Hiányzó OPENAI_API_KEY beállítás a Vercel-en!" });
     }
 
     const { messages } = req.body;
+    if (!messages) {
+      return res.status(400).json({ error: "Hiányzó 'messages' tartalom!" });
+    }
 
     const response = await fetch("https://openai.com", {
       method: "POST",
@@ -34,10 +37,13 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok) {
-      return res.status(500).json({ error: "OpenAI hiba: " + (data.error?.message || JSON.stringify(data)) });
+      return res.status(response.status).json({ 
+        error: "OpenAI hiba: " + (data.error?.message || JSON.stringify(data)) 
+      });
     }
 
-    return res.status(200).json({ reply: data.choices?.[0]?.message?.content ?? "" });
+    const reply = data.choices?.[0]?.message?.content ?? "";
+    return res.status(200).json({ reply: reply });
     
   } catch (err) {
     return res.status(500).json({ error: err.message });
