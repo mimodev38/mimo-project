@@ -1,30 +1,24 @@
-export default async function handler(req, res) {
+export const config = {
+  runtime: 'edge',
+};
+
+export default async function handler(req) {
   try {
-    // CORS fejléc beállítása a böngészőhöz
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-    if (req.method === "OPTIONS") {
-      return res.status(200).end();
-    }
-
+    // Csak a POST kéréseket engedjük át
     if (req.method !== "POST") {
-      return res.status(405).json({ error: "Only POST allowed" });
+      return new Response(JSON.stringify({ error: "Only POST allowed" }), { status: 405 });
     }
 
-    // OpenAI kulcs beolvasása a Vercelből
+    // OpenAI kulcs ellenőrzése
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ 
-        error: "Rendszerhiba: Az 'OPENAI_API_KEY' környezeti változó hiányzik a Vercel felületéről!" 
-      });
+      return new Response(JSON.stringify({ error: "Hiányzó API kulcs a Vercelből!" }), { status: 500 });
     }
 
-    // Itt javítottuk ki: pontosan a frontend által küldött 'messages' tömböt olvassuk be
-    const { messages } = req.body;
+    // Beolvassuk az adatokat a kérésből
+    const { messages } = await req.json();
     if (!messages) {
-      return res.status(400).json({ error: "Hiányzó 'messages' tartalom a kérésben!" });
+      return new Response(JSON.stringify({ error: "Hiányzó messages tömb!" }), { status: 400 });
     }
 
     // Kapcsolódás az OpenAI-hoz
@@ -34,26 +28,33 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`
       },
-            body: JSON.stringify({
+      body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: messages,
-        response_format: { type: "json_object" }
+        messages: messages
       })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      return res.status(500).json({
-        error: "OpenAI hiba: " + (data.error?.message || JSON.stringify(data))
-      });
+      return new Response(JSON.stringify({ error: "OpenAI hiba: " + (data.error?.message || JSON.stringify(data)) }), { status: 500 });
     }
 
-    // Válasz küldése a böngészőnek
     const reply = data.choices?.[0]?.message?.content ?? "";
-    return res.status(200).json({ reply: reply });
+
+    // CORS fejlécek hozzáadása a válaszhoz
+    return new Response(JSON.stringify({ reply: reply }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+      }
+    });
     
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
+
