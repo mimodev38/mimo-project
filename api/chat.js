@@ -3,25 +3,34 @@ export const config = {
 };
 
 export default async function handler(req) {
+  // CORS kezelése az előzetes böngésző ellenőrzésekhez (OPTIONS)
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      }
+    });
+  }
+
   try {
-    // Csak a POST kéréseket engedjük át
     if (req.method !== "POST") {
       return new Response(JSON.stringify({ error: "Only POST allowed" }), { status: 405 });
     }
 
-    // OpenAI kulcs ellenőrzése
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "Hiányzó API kulcs a Vercelből!" }), { status: 500 });
     }
 
-    // Beolvassuk az adatokat a kérésből
     const { messages } = await req.json();
     if (!messages) {
       return new Response(JSON.stringify({ error: "Hiányzó messages tömb!" }), { status: 400 });
     }
 
-    // Kapcsolódás az OpenAI-hoz
+    // Hívás az OpenAI felé
     const response = await fetch("https://openai.com", {
       method: "POST",
       headers: {
@@ -42,7 +51,7 @@ export default async function handler(req) {
 
     const reply = data.choices?.[0]?.message?.content ?? "";
 
-    // CORS fejlécek hozzáadása a válaszhoz
+    // Teljes válasz visszaküldése a frontendnek
     return new Response(JSON.stringify({ reply: reply }), {
       status: 200,
       headers: {
