@@ -1,7 +1,4 @@
-import OpenAI from 'openai';
-
 export default async function handler(req, res) {
-  // CORS biztonsági fejlécek a böngészőhöz
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -15,30 +12,64 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Beolvassuk a Vercel-be elmentett ingyenes kulcsodat
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "Hiányzó OPENAI_API_KEY beállítás a Vercel-en!" });
+      return res.status(500).json({ error: "Hiányzó GEMINI_API_KEY beállítás a Vercel-en!" });
     }
-
-    // Inicializáljuk a hivatalos OpenAI klienst
-    const openai = new OpenAI({ apiKey: apiKey });
 
     const { messages } = req.body;
-    if (!messages) {
-      return res.status(400).json({ error: "Hiányzó 'messages' tartalom!" });
+    
+    // Kivesszük a frontendről érkező adatokat (képet és a prompt szöveget)
+    const userContent = messages?.[0]?.content;
+    if (!userContent || !Array.isArray(userContent)) {
+      return res.status(400).json({ error: "Hibás kérés formátum!" });
     }
 
-    // Hivatalos, biztonságos API hívás
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: messages
+    const imagePart = userContent.find(c => c.type === 'image_url');
+    const textPart = userContent.find(c => c.type === 'text');
+
+    if (!imagePart || !imagePart.image_url?.url) {
+      return res.status(400).json({ error: "Nem található kép a kérésben!" });
+    }
+
+    // Szétvágjuk a Base64-es szöveget, mert a Gemininek külön kell a típus és a nyers adat
+    const rawData = imagePart.image_url.url;
+    const commaIndex = rawData.indexOf(',');
+    if (commaIndex === -1) {
+      return res.status(400).json({ error: "Sérült képadat formátum!" });
+    }
+
+    const mimeType = rawData.substring(rawData.indexOf(':') + 1, rawData.indexOf(';'));
+    const base64Data = rawData.substring(commaIndex + 1);
+    const promptText = textPart?.text || "Elemezd a képet.";
+
+    // Hívás az ingyenes Google Gemini 1.5 Flash API felé
+    const response = await fetch(`https://googleapis.com{apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { inlineData: { mimeType: mimeType, data: base64Data } },
+            { text: promptText }
+          ]
+        }],
+        generationConfig: { responseMimeType: "application/json" }
+      })
     });
 
-    const reply = completion.choices[0]?.message?.content ?? "";
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(500).json({ error: "Gemini szerver hiba: " + JSON.stringify(data) });
+    }
+
+    // Kiszedjük a Gemini által visszaadott tiszta szöveges választ
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     return res.status(200).json({ reply: reply });
     
   } catch (err) {
-    // Ha az OpenAI hibát dob, azt szövegesen küldjük vissza, így nem lesz JSON hiba a kliensen
-    return res.status(500).json({ error: "Szerveroldali OpenAI hiba: " + err.message });
+    return res.status(500).json({ error: err.message });
   }
 }
