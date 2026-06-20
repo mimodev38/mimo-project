@@ -305,8 +305,42 @@ let files = [];
         setStatus(`Legfeljebb ${MAX_FILES} fájlt tudok egyszerre nézni.`, 'error');
         break;
       }
-      const totalAfterUpload = currentSize +
-  incoming.reduce((s, x) => s + x.size, 0);
+     function handleFiles(fileListObj){
+  const incoming = Array.from(fileListObj);
+
+  let currentSize = files.reduce(
+    (sum, f) => sum + (f.originalSize || 0),
+    0
+  );
+
+  for (const f of incoming){
+
+    if (files.length >= MAX_FILES){
+      setStatus(`Legfeljebb ${MAX_FILES} fájlt tudok egyszerre nézni.`, 'error');
+      break;
+    }
+
+    if (!ACCEPTED.includes(f.type)){
+      setStatus(`A ${f.name} formátuma nem támogatott. PNG, JPG vagy PDF kell.`, 'error');
+      continue;
+    }
+
+    // 👉 EZ A LÉNYEGI FIX
+    if (currentSize + f.size > MAX_TOTAL_SIZE) {
+      setStatus(
+        `"${f.name}" már nem fér bele a 25 MB-os keretbe.`,
+        'error'
+      );
+      continue;
+    }
+
+    currentSize += f.size;
+
+    readAsBase64(f);
+  }
+
+  fileInput.value = '';
+}
 
 if (totalAfterUpload > MAX_TOTAL_SIZE) {
   setStatus(
