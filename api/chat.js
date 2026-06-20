@@ -31,13 +31,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Nem található kép a kérésben!" });
     }
 
-    // Kicsomagoljuk a tiszta adatokat a Google/OpenRouter szabvány szerint
+    // Képadatok tiszta szétválasztása
     const dataUrl = imagePart.image_url.url;
     const mimeType = dataUrl.substring(dataUrl.indexOf(":") + 1, dataUrl.indexOf(";"));
     const base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1);
     const promptText = textPart?.text || "Extract JSON.";
 
-    // Átalakítjuk a kérést az OpenRouter által elvárt hivatalos formátumra
+    // ITT JAVÍTVA: Az OpenRouter hivatalos, többváltozós (multimodal) üzenetformátumát használjuk
     const response = await fetch("https://openrouter.ai", {
       method: "POST",
       headers: {
@@ -72,8 +72,13 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content ?? "";
     
+    // Ha az OpenRouter üres vagy hibás választ adna vissza, lekezeljük
+    if (!data.choices || data.choices.length === 0) {
+      return res.status(500).json({ error: "Az OpenRouter nem küldött értékelhető választ: " + JSON.stringify(data) });
+    }
+
+    const reply = data.choices[0]?.message?.content ?? "";
     return res.status(200).json({ reply: reply });
     
   } catch (err) {
