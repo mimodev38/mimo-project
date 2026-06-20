@@ -90,11 +90,10 @@ processBtn.addEventListener('click', async () => {
 
   content.push({
     type: "text",
-    text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Ne használj kódblokkot, csak a nyers JSON szöveget add vissza."
+    text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Ne használj kódblokkot, csak a nyers JSON szöveget."
   });
 
   try {
-    // Az új Next.js API útvonal meghívása
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
