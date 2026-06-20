@@ -1,5 +1,7 @@
 {
-  "routes": [
-    { "src": "/api/chat", "dest": "/api/chat.js" }
-  ]
+  "functions": {
+    "api/*.js": {
+      "runtime": "vercel-node@latest"
+    }
+  }
 }
