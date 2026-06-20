@@ -1,27 +1,9 @@
 const MAX_FILES = 15;
 const MAX_TOTAL_SIZE = 25 * 1024 * 1024;
 
-const ACCEPTED = [
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'application/pdf'
-];
-
+const ACCEPTED = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
 let files = [];
 let isProcessingFiles = false;
-
-/* ===== API KULCS KEZELÉS (BÖNGÉSZŐBEN ELREJTVE) ===== */
-// Első megnyitáskor bekéri a kulcsot, utána örökre megjegyzi a böngésződ, így nem kell újra beírni!
-let OPENAI_KEY = localStorage.getItem('my_secret_openai_key');
-
-if (!OPENAI_KEY) {
-  const inputKey = prompt("Kérlek, add meg az OpenAI API kulcsodat (sk-proj-...):\n(Ezt csak egyszer kell megadnod, a böngésződ biztonságosan elmenti!)");
-  if (inputKey) {
-    localStorage.setItem('my_secret_openai_key', inputKey.trim());
-    OPENAI_KEY = inputKey.trim();
-  }
-}
 
 /* ===== DOM ===== */
 const dropzone = document.getElementById('dropzone');
@@ -66,7 +48,7 @@ function readFile(f){
       id: crypto.randomUUID(),
       name: f.name,
       type: f.type,
-      base64: reader.result.split(',')[1],
+      base64: reader.result,
       size: f.size
     });
     renderList();
@@ -89,57 +71,54 @@ function renderList(){
 window.removeFile = (id) => { files = files.filter(f => f.id !== id); renderList(); };
 function setStatus(msg, error=false){ statusEl.textContent = msg; statusEl.className = 'status' + (error ? ' error' : ''); }
 
-/* ===== PROCESS ===== */
+/* ===== PROCESS (DARABOLT KÜLDÉS A 4.5MB-OS VERCEL LIMIT MIATT) ===== */
 processBtn.addEventListener('click', async () => {
   if (!files.length) return;
-  if (!OPENAI_KEY) {
-    setStatus("Hiányzó API kulcs! Frissítsd az oldalt és add meg a kulcsot.", true);
-    return;
-  }
-
   processBtn.disabled = true;
-  setStatus("Feldolgozás...", false);
+  
+  let finalCim = "-";
+  let finalDatum = "-";
 
-  const content = files.map(f => ({
-    type: 'image_url',
-    image_url: { url: `data:${f.type};base64,${f.base64}` }
-  }));
+  // Ciklusban, egyesével küldjük el a képeket, így a csomagméret mindig kicsi marad!
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    setStatus(`Fájl feldolgozása (${i + 1}/${files.length}): ${f.name}...`, false);
 
-  content.push({
-    type: "text",
-    text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON-t adj, kódblokk (```json) nélkül!"
-  });
+    const content = [
+      { type: 'image_url', image_url: { url: f.base64 } },
+      { type: "text", text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, markdown kódblokkok nélkül!" }
+    ];
 
-  try {
-    // Közvetlen, tiszta hívás az OpenAI felé – Nincs Vercel szerverhiba, nincs útvonal hiba!
-    const res = await fetch('https://openai.com', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: content }]
-      })
-    });
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ messages: [{ role: 'user', content }] })
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!res.ok) {
-      throw new Error(data.error?.message || "Hiba történt az OpenAI hívás során");
+      if (!res.ok) {
+        throw new Error(data.error || `Hiba történt a(z) ${f.name} feldolgozásakor.`);
+      }
+
+      const json = JSON.parse(data.reply.trim());
+      
+      // Ha talált adatot a képben, elmentjük
+      if (json.cim && json.cim !== "-") finalCim = json.cim;
+      if (json.birtokbaadas_datuma && json.birtokbaadas_datuma !== "-") finalDatum = json.birtokbaadas_datuma;
+
+    } catch (e) {
+      setStatus(`Hiba a(z) ${f.name} fájlnál: ${e.message}`, true);
+      processBtn.disabled = false;
+      return;
     }
-
-    const text = data.choices[0].message.content;
-    const json = JSON.parse(text.trim());
-
-    renderResult(json);
-    resultCard.hidden = false;
-    setStatus("Sikeres feldolgozás!", false);
-
-  } catch (e) {
-    setStatus(e.message, true);
   }
+
+  // Megjelenítjük az összesített eredményt
+  renderResult({ cim: finalCim, birtokbaadas_datuma: finalDatum });
+  resultCard.hidden = false;
+  setStatus("Összes fájl sikeresen feldolgozva!", false);
   processBtn.disabled = false;
 });
 
