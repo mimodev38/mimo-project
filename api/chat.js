@@ -32,10 +32,10 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${apiKey.trim()}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        model: "google/gemini-1.5-flash:free", // Az ingyenes, stabil Gemini 1.5 Flash modell meghívása
-        messages: [{ role: "user", content: userContent }]
-      })
+     body: JSON.stringify({
+  model: "mistralai/pixtral-12b:free",
+  messages: [{ role: "user", content: userContent }]
+})
     });
 
     if (!response.ok) {
