@@ -38,7 +38,7 @@ function handleFiles(list){
   renderList();
 }
 
-/* ===== OPTIMALIZÁLT KIS FELBONTÁS A VERCEL TIMEOUT ELLEN ===== */
+/* ===== DRASZTIKUS KÉPKICSINYÍTÉS A 10 MÁSODPERCES LIMIT ELLEN ===== */
 function readFile(f) {
   const reader = new FileReader();
   reader.onload = async () => {
@@ -49,9 +49,9 @@ function readFile(f) {
       let width = img.width;
       let height = img.height;
       
-      // Szupergyors feldolgozásra méretezzük a képet (Max 600px)
-      const MAX_WIDTH = 600;
-      const MAX_HEIGHT = 600;
+      // Maximális méret 400px-re csökkentve -> villámgyors OpenAI feldolgozás!
+      const MAX_WIDTH = 400;
+      const MAX_HEIGHT = 400;
 
       if (width > height) {
         if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
@@ -64,12 +64,14 @@ function readFile(f) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
 
+      const cleanName = f.name.toLowerCase().replace(/[^a-z0-9.]/g, '_');
+
       files.push({
         id: crypto.randomUUID(),
-        name: f.name,
+        name: cleanName,
         type: 'image/jpeg',
-        // Erős tömörítés, hogy minimális adatot kelljen küldeni
-        base64: canvas.toDataURL('image/jpeg', 0.5),
+        // 40%-os minőségű tömörítés, az adatcsomag elenyésző méretű lesz
+        base64: canvas.toDataURL('image/jpeg', 0.4),
         size: f.size
       });
       renderList();
