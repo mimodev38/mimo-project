@@ -1,7 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
 export default async function handler(req, res) {
-  // CORS biztonsági fejlécek a böngészőhöz
+  // CORS biztonsági beállítások a böngészőhöz
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -15,56 +13,42 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "Hiányzó GEMINI_API_KEY beállítás a Vercel-en!" });
+      return res.status(500).json({ error: "Hiányzó OPENAI / OPENROUTER API kulcs a Vercel-en!" });
     }
-
-    // A javított Google Generative AI példányosítás
-    const ai = new GoogleGenerativeAI(apiKey);
 
     const { messages } = req.body;
     const userContent = messages?.[0]?.content;
     
     if (!userContent || !Array.isArray(userContent)) {
-      return res.status(400).json({ error: "Hibás vagy hiányzó kérés formátum!" });
+      return res.status(400).json({ error: "Hiányzó vagy sérült adatformátum a kérésben!" });
     }
 
-    const imagePart = userContent.find(c => c.type === 'image_url');
-    const textPart = userContent.find(c => c.type === 'text');
-
-    if (!imagePart || !imagePart.image_url?.url) {
-      return res.status(400).json({ error: "Nem található kép a kérésben!" });
-    }
-
-    // Képadatok kicsomagolása a Google formátumához
-    const dataUrl = imagePart.image_url.url;
-    const mimeType = dataUrl.substring(dataUrl.indexOf(":") + 1, dataUrl.indexOf(";"));
-    const base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1);
-    const promptText = textPart?.text || "Extract information as JSON.";
-
-    const model = ai.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
+    // Kapcsolódás a regionális tiltásoktól mentes OpenRouter hálózathoz
+    const response = await fetch("https://openrouter.ai", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey.trim()}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "google/gemini-1.5-flash:free", // Az ingyenes, stabil Gemini 1.5 Flash modell meghívása
+        messages: [{ role: "user", content: userContent }]
+      })
     });
 
-    // Hivatalos, biztonságos API hívás a Google felé
-    const result = await model.generateContent([
-      promptText,
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType
-        }
-      }
-    ]);
+    if (!response.ok) {
+      const errText = await response.text();
+      return res.status(response.status).json({ error: `OpenRouter hálózati elutasítás: ${errText}` });
+    }
 
-    const response = await result.response;
-    const reply = response.text();
-
+    const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content ?? "";
+    
     return res.status(200).json({ reply: reply });
     
   } catch (err) {
-    return res.status(500).json({ error: "Szerveroldali Google hiba: " + err.message });
+    return res.status(500).json({ error: "Szerveroldali hiba: " + err.message });
   }
 }
