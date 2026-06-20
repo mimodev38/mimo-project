@@ -1,5 +1,7 @@
+import { GoogleGenAI } from '@google/generative-ai';
+
 export default async function handler(req, res) {
-  // CORS biztonsági beállítások a böngészőhöz
+  // CORS biztonsági fejlécek a böngészőhöz
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -18,6 +20,9 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Hiányzó GEMINI_API_KEY beállítás a Vercel-en!" });
     }
 
+    // Inicializáljuk a hivatalos Google Generative AI klienst
+    const ai = new GoogleGenAI({ apiKey: apiKey });
+
     const { messages } = req.body;
     const userContent = messages?.[0]?.content;
     
@@ -32,42 +37,34 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Nem található kép a kérésben!" });
     }
 
-    // Tisztítás: Kinyerjük a tiszta MimeType-ot és a nyers Base64 kódot (fejléc nélkül)
+    // Képadatok kicsomagolása a Google formátumához
     const dataUrl = imagePart.image_url.url;
     const mimeType = dataUrl.substring(dataUrl.indexOf(":") + 1, dataUrl.indexOf(";"));
     const base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1);
     const promptText = textPart?.text || "Extract information as JSON.";
 
-    // Hívás a stabil Google Gemini 1.5 Flash végpont felé
-    const response = await fetch(`https://googleapis.com{apiKey}`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json" 
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { inlineData: { mimeType: mimeType, data: base64Data } },
-            { text: promptText }
-          ]
-        }],
-        generationConfig: { 
-          responseMimeType: "application/json" 
-        }
-      })
+    const model = ai.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      generationConfig: { responseMimeType: "application/json" }
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return res.status(response.status).json({ error: `Gemini hálózati hiba: ${errorText}` });
-    }
+    // Hivatalos, biztonságos API hívás a Google felé
+    const result = await model.generateContent([
+      promptText,
+      {
+        inlineData: {
+          data: base64Data,
+          mimeType: mimeType
+        }
+      }
+    ]);
 
-    const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    
+    const response = await result.response;
+    const reply = response.text();
+
     return res.status(200).json({ reply: reply });
     
   } catch (err) {
-    return res.status(500).json({ error: "Szerveroldali hiba: " + err.message });
+    return res.status(500).json({ error: "Szerveroldali Google hiba: " + err.message });
   }
 }
