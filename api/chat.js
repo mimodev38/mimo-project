@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export default async function handler(req, res) {
   // CORS biztonsági fejlécek a böngészőhöz
@@ -20,8 +20,8 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Hiányzó GEMINI_API_KEY beállítás a Vercel-en!" });
     }
 
-    // Inicializáljuk a hivatalos Google Generative AI klienst
-    const ai = new GoogleGenAI({ apiKey: apiKey });
+    // A javított Google Generative AI példányosítás
+    const ai = new GoogleGenerativeAI(apiKey);
 
     const { messages } = req.body;
     const userContent = messages?.[0]?.content;
