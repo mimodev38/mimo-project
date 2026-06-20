@@ -1,4 +1,7 @@
+import OpenAI from 'openai';
+
 export default async function handler(req, res) {
+  // CORS biztonsági fejlécek a böngészőhöz
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -17,35 +20,25 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Hiányzó OPENAI_API_KEY beállítás a Vercel-en!" });
     }
 
+    // Inicializáljuk a hivatalos OpenAI klienst
+    const openai = new OpenAI({ apiKey: apiKey });
+
     const { messages } = req.body;
     if (!messages) {
       return res.status(400).json({ error: "Hiányzó 'messages' tartalom!" });
     }
 
-    const response = await fetch("https://openai.com", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: messages
-      })
+    // Hivatalos, biztonságos API hívás
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: messages
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json({ 
-        error: "OpenAI hiba: " + (data.error?.message || JSON.stringify(data)) 
-      });
-    }
-
-    const reply = data.choices?.[0]?.message?.content ?? "";
+    const reply = completion.choices[0]?.message?.content ?? "";
     return res.status(200).json({ reply: reply });
     
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    // Ha az OpenAI hibát dob, azt szövegesen küldjük vissza, így nem lesz JSON hiba a kliensen
+    return res.status(500).json({ error: "Szerveroldali OpenAI hiba: " + err.message });
   }
 }
