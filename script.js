@@ -5,7 +5,7 @@ const ACCEPTED = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
 let files = [];
 let isProcessingFiles = false;
 
-/* ===== DOM ===== */
+/* ===== DOM ELEMENTS ===== */
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
 const filelist = document.getElementById('filelist');
@@ -15,7 +15,7 @@ const resultCard = document.getElementById('resultCard');
 const resultEl = document.getElementById('result');
 const resetBtn = document.getElementById('resetBtn');
 
-/* ===== DROPZONE ===== */
+/* ===== DROPZONE EVENTS ===== */
 dropzone.addEventListener('click', () => fileInput.click());
 dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
@@ -41,17 +41,44 @@ function handleFiles(list){
   renderList();
 }
 
-function readFile(f){
+/* ===== INTELLIGENS KÉPTÖMÖRÍTÉS A BÖNGÉSZŐBEN (Vercel 4.5MB limit hiba ellen) ===== */
+function readFile(f) {
   const reader = new FileReader();
   reader.onload = async () => {
-    files.push({
-      id: crypto.randomUUID(),
-      name: f.name,
-      type: f.type,
-      base64: reader.result,
-      size: f.size
-    });
-    renderList();
+    const img = new Image();
+    img.src = reader.result;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      // Ha a kép túl nagy, lekicsinyítjük a felbontást (max 1200px szélességre vagy magasságra)
+      const MAX_WIDTH = 1200;
+      const MAX_HEIGHT = 1200;
+
+      if (width > height) {
+        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+      } else {
+        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Kép exportálása tömörített JPEG formátumban (80%-os minőség)
+      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+      files.push({
+        id: crypto.randomUUID(),
+        name: f.name,
+        type: 'image/jpeg',
+        base64: compressedBase64,
+        size: f.size
+      });
+      renderList();
+    };
   };
   reader.onerror = () => setStatus(`Hiba: ${f.name}`, true);
   reader.readAsDataURL(f);
@@ -71,7 +98,7 @@ function renderList(){
 window.removeFile = (id) => { files = files.filter(f => f.id !== id); renderList(); };
 function setStatus(msg, error=false){ statusEl.textContent = msg; statusEl.className = 'status' + (error ? ' error' : ''); }
 
-/* ===== PROCESS (DARABOLT KÜLDÉS A 4.5MB-OS VERCEL LIMIT MIATT) ===== */
+/* ===== PROCESSOR ===== */
 processBtn.addEventListener('click', async () => {
   if (!files.length) return;
   processBtn.disabled = true;
@@ -79,14 +106,13 @@ processBtn.addEventListener('click', async () => {
   let finalCim = "-";
   let finalDatum = "-";
 
-  // Ciklusban, egyesével küldjük el a képeket, így a csomagméret mindig kicsi marad!
   for (let i = 0; i < files.length; i++) {
     const f = files[i];
     setStatus(`Fájl feldolgozása (${i + 1}/${files.length}): ${f.name}...`, false);
 
     const content = [
       { type: 'image_url', image_url: { url: f.base64 } },
-      { type: "text", text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, markdown kódblokkok nélkül!" }
+      { type: "text", text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, markdown kódblokk jelölések nélkül!" }
     ];
 
     try {
@@ -104,7 +130,6 @@ processBtn.addEventListener('click', async () => {
 
       const json = JSON.parse(data.reply.trim());
       
-      // Ha talált adatot a képben, elmentjük
       if (json.cim && json.cim !== "-") finalCim = json.cim;
       if (json.birtokbaadas_datuma && json.birtokbaadas_datuma !== "-") finalDatum = json.birtokbaadas_datuma;
 
@@ -115,7 +140,6 @@ processBtn.addEventListener('click', async () => {
     }
   }
 
-  // Megjelenítjük az összesített eredményt
   renderResult({ cim: finalCim, birtokbaadas_datuma: finalDatum });
   resultCard.hidden = false;
   setStatus("Összes fájl sikeresen feldolgozva!", false);
