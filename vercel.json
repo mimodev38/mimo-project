@@ -1,4 +1,10 @@
 {
+  "functions": {
+    "api/chat.js": {
+      "maxDuration": 120,
+      "memory": 1024
+    }
+  },
   "builds": [
     { "src": "api/chat.js", "use": "@vercel/node" },
     { "src": "**", "use": "@vercel/static" }
