@@ -38,20 +38,22 @@ function handleFiles(list){
   renderList();
 }
 
-/* ===== DRASZTIKUS KÉPKICSINYÍTÉS A 10 MÁSODPERCES LIMIT ELLEN ===== */
+/* ===== BIZTONSÁGOS KÉPBEOLVASÁS HIBAKEZELŐVEL ===== */
 function readFile(f) {
   const reader = new FileReader();
   reader.onload = async () => {
+    const cleanName = f.name.toLowerCase().replace(/[^a-z0-9.]/g, '_');
+    
     const img = new Image();
     img.src = reader.result;
+    
+    // Ha a kép szabályos, lekicsinyítjük a Vercel-limit miatt
     img.onload = () => {
       const canvas = document.createElement('canvas');
       let width = img.width;
       let height = img.height;
-      
-      // Maximális méret 400px-re csökkentve -> villámgyors OpenAI feldolgozás!
-      const MAX_WIDTH = 400;
-      const MAX_HEIGHT = 400;
+      const MAX_WIDTH = 500;
+      const MAX_HEIGHT = 500;
 
       if (width > height) {
         if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
@@ -64,14 +66,23 @@ function readFile(f) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
 
-      const cleanName = f.name.toLowerCase().replace(/[^a-z0-9.]/g, '_');
-
       files.push({
         id: crypto.randomUUID(),
         name: cleanName,
         type: 'image/jpeg',
-        // 40%-os minőségű tömörítés, az adatcsomag elenyésző méretű lesz
-        base64: canvas.toDataURL('image/jpeg', 0.4),
+        base64: canvas.toDataURL('image/jpeg', 0.5),
+        size: f.size
+      });
+      renderList();
+    };
+
+    // BIZTONSÁGI MENTŐÖV: Ha a fájl nem igazi kép (pl. PDF vagy hibás metaadat), nyersen küldjük el!
+    img.onerror = () => {
+      files.push({
+        id: crypto.randomUUID(),
+        name: cleanName,
+        type: f.type,
+        base64: reader.result,
         size: f.size
       });
       renderList();
@@ -107,7 +118,7 @@ processBtn.addEventListener('click', async () => {
 
     const content = [
       { type: 'image_url', image_url: { url: f.base64 } },
-      { type: "text", text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, markdown kódblokk jelölések nélkül!" }
+      { type: "text", text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, kódblokk jelölések nélkül!" }
     ];
 
     try {
