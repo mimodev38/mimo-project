@@ -36,15 +36,18 @@ export default async function handler(req, res) {
     if (claudeBody.system) openaiMessages.push({ role: "system", content: claudeBody.system });
     openaiMessages.push({ role: "user", content: openaiContent });
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "gpt-5.5",
-        max_tokens: claudeBody.max_tokens || 1500,
-        messages: openaiMessages
-      })
-    });
+const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`
+  },
+  body: JSON.stringify({
+    model: "gpt-4o-mini",
+    max_tokens: claudeBody.max_tokens || 1500,
+    messages: openaiMessages
+  })
+});
 
     const data = await response.json();
     if (!response.ok) return res.status(response.status).json(data);
