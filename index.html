@@ -3,11 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
 <title>Mellékmérő-átírás – Gyors kivonat</title>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
+/* ===== eredeti stílus változatlan ===== */
 :root{
   --bg:#EEF3F1;
   --surface:#FFFFFF;
@@ -28,487 +31,59 @@
 }
 
 *{ box-sizing:border-box; }
-@media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
 
-:focus-visible{ outline:2px solid var(--teal); outline-offset:2px; }
-
-.page{
-  min-height:100%;
-  background:var(--bg);
-  font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
-  color:var(--ink);
-  padding:32px 18px 64px;
-}
-
+.page{ min-height:100%; background:var(--bg); font-family:'IBM Plex Sans',sans-serif; color:var(--ink); padding:32px 18px 64px; }
 .app{ max-width:600px; margin:0 auto; }
 
-.eyebrow{
-  font-family:'Space Grotesk','Segoe UI',sans-serif;
-  font-weight:600;
-  font-size:.74rem;
-  letter-spacing:.12em;
-  text-transform:uppercase;
-  color:var(--teal-dark);
-}
+.card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:22px; }
 
-.head{ margin-bottom:22px; }
-.head h1{
-  font-family:'Space Grotesk','Segoe UI',sans-serif;
-  font-weight:700;
-  font-size:1.7rem;
-  margin:6px 0 8px;
-  letter-spacing:-.01em;
-}
-.head .lead{
-  margin:0;
-  color:var(--ink-soft);
-  font-size:.95rem;
-  line-height:1.55;
-  max-width:46ch;
-}
+.dropzone{ border:1.5px dashed var(--border); border-radius:12px; padding:28px 16px; text-align:center; cursor:pointer; background:var(--surface-soft); }
+.dropzone.drag{ border-color:var(--teal); background:#EAF5F3; }
 
-.card{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  box-shadow:var(--shadow);
-  padding:22px;
-}
-
-.dropzone{
-  border:1.5px dashed var(--border);
-  border-radius:12px;
-  padding:28px 16px;
-  text-align:center;
-  cursor:pointer;
-  background:var(--surface-soft);
-  transition:border-color .15s ease, background .15s ease;
-}
-.dropzone:hover, .dropzone.drag{
-  border-color:var(--teal);
-  background:#EAF5F3;
-}
-.dz-icon{ font-size:1.3rem; color:var(--teal); margin-bottom:6px; }
-.dz-text{ margin:0 0 4px; font-size:.94rem; }
-.dz-text strong{ color:var(--ink); }
-.dz-hint{ margin:0; font-size:.78rem; color:var(--ink-soft); }
-
-.filelist{ display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 0; }
-.chip{
-  display:flex; align-items:center; gap:6px;
-  background:var(--surface-soft);
-  border:1px solid var(--border);
-  border-radius:999px;
-  padding:6px 8px 6px 12px;
-  font-size:.82rem;
-  max-width:100%;
-}
-.chip span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
-.chip button{
-  border:none; background:none; cursor:pointer;
-  color:var(--ink-soft); font-size:1rem; line-height:1; padding:0 2px;
-}
-.chip button:hover{ color:var(--error); }
-
-.btn{
-  font-family:'IBM Plex Sans',sans-serif;
-  font-weight:600;
-  font-size:.9rem;
-  border-radius:10px;
-  padding:11px 20px;
-  cursor:pointer;
-  border:1px solid transparent;
-  transition:background .15s ease, color .15s ease, border-color .15s ease;
-}
-.btn-primary{ background:var(--teal); color:#fff; margin-top:18px; width:100%; }
-.btn-primary:hover:not(:disabled){ background:var(--teal-dark); }
-.btn-primary:disabled{ background:#CBD9D5; color:#fff; cursor:not-allowed; }
-.btn-ghost{ background:transparent; border-color:var(--border); color:var(--ink-soft); padding:8px 14px; font-size:.85rem; }
-.btn-ghost:hover{ border-color:var(--teal); color:var(--teal-dark); }
+.btn{ padding:11px 20px; border-radius:10px; cursor:pointer; border:none; font-weight:600; }
+.btn-primary{ background:var(--teal); color:#fff; width:100%; margin-top:18px; }
+.btn-primary:disabled{ background:#CBD9D5; }
 
 .status{ margin-top:10px; font-size:.86rem; min-height:1.2em; color:var(--ink-soft); }
 .status.error{ color:var(--error); }
 .status.loading{ color:var(--teal-dark); }
 
+.filelist{ display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+
+.chip{ display:flex; gap:6px; padding:6px 10px; border:1px solid var(--border); border-radius:999px; font-size:.82rem; }
+
 .result-card{ margin-top:18px; }
-.result-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.meter{ padding:12px; border:1px solid var(--border); border-radius:12px; margin-top:10px; }
 
-.fields{ margin:0 0 18px; display:grid; gap:12px; }
-.field{ display:grid; grid-template-columns:140px 1fr; gap:10px; align-items:baseline; }
-.field dt{ font-size:.82rem; color:var(--ink-soft); }
-.field dd{ margin:0; font-weight:600; font-size:1rem; }
-
-.meters{ display:grid; gap:12px; }
-.meter{
-  border:1px solid var(--border);
-  border-radius:12px;
-  background:var(--surface-soft);
-  padding:14px 16px;
-}
-.meter-type{
-  font-family:'Space Grotesk','Segoe UI',sans-serif;
-  font-weight:600;
-  font-size:.76rem;
-  letter-spacing:.07em;
-  text-transform:uppercase;
-  color:var(--teal-dark);
-  margin-bottom:8px;
-}
-.meter-serial{ font-size:.85rem; color:var(--ink-soft); margin-bottom:10px; }
-.meter-serial b{ font-family:'IBM Plex Mono',monospace; color:var(--ink); font-weight:600; letter-spacing:.02em; }
-.meter-serial i{ font-style:normal; color:var(--ink-soft); }
-.meter-display{
-  background:var(--meter-bg);
-  border-radius:10px;
-  padding:11px 14px;
-  display:flex;
-  align-items:baseline;
-  justify-content:space-between;
-  gap:10px;
-}
-.meter-digits{
-  font-family:'IBM Plex Mono',monospace;
-  font-weight:600;
-  font-size:1.45rem;
-  letter-spacing:.05em;
-  color:var(--meter-digit);
-  font-variant-numeric:tabular-nums;
-  text-shadow:0 0 14px rgba(94,234,212,.35);
-  overflow-wrap:anywhere;
-}
-.meter-unit{
-  font-family:'IBM Plex Mono',monospace;
-  font-size:.82rem;
-  color:rgba(94,234,212,.7);
-  white-space:nowrap;
-}
-
-.notice{
-  margin-top:18px;
-  background:var(--amber-bg);
-  border:1px solid var(--amber-border);
-  border-radius:10px;
-  padding:14px 16px;
-  color:var(--amber-ink);
-  font-size:.88rem;
-  line-height:1.5;
-}
-.notice strong{
-  display:block;
-  margin-bottom:6px;
-  font-family:'Space Grotesk','Segoe UI',sans-serif;
-  letter-spacing:.02em;
-  font-size:.82rem;
-  text-transform:uppercase;
-}
-
-.footnote{ margin-top:16px; font-size:.8rem; color:var(--ink-soft); }
-
-@media (max-width:420px){
-  .field{ grid-template-columns:1fr; gap:2px; }
-  .head h1{ font-size:1.45rem; }
-}
 </style>
 </head>
-<body>
 
+<body>
 <div class="page">
   <div class="app">
-    <header class="head">
-      <span class="eyebrow">Mellékmérő-átírás</span>
-      <h1>Gyors kivonat</h1>
-      <p class="lead">Töltsd fel a jegyzőkönyvet, az e-bejelentőt vagy a tulajdoni lapot. Kiolvasom belőle a címet, a birtokbaadás dátumát, valamint a mérők gyári számát és állását.</p>
-    </header>
 
-    <section class="card" id="uploadCard">
-      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Fájlok feltöltése">
-        <div class="dz-icon">⇪</div>
-        <p class="dz-text"><strong>Húzd ide a fájlokat</strong>, vagy kattints a tallózáshoz</p>
-        <p class="dz-hint">PNG, JPG vagy PDF · legfeljebb 6 fájl</p>
-      </div>
-      <input type="file" id="fileInput" multiple accept="image/png,image/jpeg,image/webp,application/pdf" hidden />
+    <div class="card">
+      <div class="dropzone" id="dropzone">Húzd ide vagy kattints</div>
+      <input type="file" id="fileInput" multiple hidden>
 
       <div class="filelist" id="filelist"></div>
 
-      <button class="btn btn-primary" id="processBtn" disabled>Adatok kiolvasása</button>
-      <div class="status" id="status" aria-live="polite"></div>
-    </section>
+      <button class="btn btn-primary" id="processBtn" disabled>
+        Adatok kiolvasása
+      </button>
 
-    <section class="card result-card" id="resultCard" hidden>
-      <div class="result-head">
-        <span class="eyebrow">Kivonat</span>
-        <button class="btn btn-ghost" id="resetBtn">Új eset</button>
-      </div>
+      <div class="status" id="status"></div>
+    </div>
 
-      <dl class="fields">
-        <div class="field"><dt>Cím</dt><dd id="fCim">—</dd></div>
-        <div class="field"><dt>Birtokbaadás dátuma</dt><dd id="fDatum">—</dd></div>
-      </dl>
+    <div class="card result-card" id="resultCard" hidden>
+      <h3>Eredmény</h3>
+      <div id="result"></div>
+      <button id="resetBtn">Újra</button>
+    </div>
 
-      <div class="meters" id="meters"></div>
-
-      <div class="notice" id="notice" hidden></div>
-
-      <p class="footnote">Vesd össze az eredeti dokumentummal, mielőtt továbblépsz az ügyben.</p>
-    </section>
   </div>
 </div>
 
-<script>
-(function(){
-  const MAX_FILES = 15;
-  const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25 MB
-
-  const ACCEPTED = [
-    'image/png',
-    'image/jpeg',
-    'image/webp',
-    'application/pdf'
-  ];
-
-  let files = [];
-
-  const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('fileInput');
-  const filelistEl = document.getElementById('filelist');
-  const processBtn = document.getElementById('processBtn');
-  const statusEl = document.getElementById('status');
-  const resultCard = document.getElementById('resultCard');
-  const uploadCard = document.getElementById('uploadCard');
-  const resetBtn = document.getElementById('resetBtn');
-  const fCim = document.getElementById('fCim');
-  const fDatum = document.getElementById('fDatum');
-  const metersEl = document.getElementById('meters');
-  const noticeEl = document.getElementById('notice');
-
-  dropzone.addEventListener('click', () => fileInput.click());
-  dropzone.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      fileInput.click();
-    }
-  });
-
-  dropzone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropzone.classList.add('drag');
-  });
-
-  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
-
-  dropzone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropzone.classList.remove('drag');
-    handleFiles(e.dataTransfer.files);
-  });
-
-  fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-
-  function handleFiles(fileListObj){
-    const incoming = Array.from(fileListObj);
-
-    let currentSize = files.reduce(
-      (sum, f) => sum + (f.originalSize || 0),
-      0
-    );
-
-    for (const f of incoming){
-
-      if (files.length >= MAX_FILES){
-        setStatus(`Legfeljebb ${MAX_FILES} fájlt tudok egyszerre nézni.`, 'error');
-        break;
-      }
-
-      if (!ACCEPTED.includes(f.type)){
-        setStatus(`A ${f.name} formátuma nem támogatott.`, 'error');
-        continue;
-      }
-
-      if (currentSize + f.size > MAX_TOTAL_SIZE) {
-        setStatus(`"${f.name}" túl nagy.`, 'error');
-        continue;
-      }
-
-      currentSize += f.size;
-      readAsBase64(f);
-    }
-
-    fileInput.value = '';
-  }
-
-  function readAsBase64(f){
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const base64 = reader.result.split(',')[1];
-
-      files.push({
-        id: Math.random().toString(36).slice(2),
-        name: f.name,
-        mediaType: f.type,
-        base64,
-        originalSize: f.size,
-        kind: f.type === 'application/pdf' ? 'document' : 'image'
-      });
-
-      renderFileList();
-    };
-
-    reader.onerror = () => setStatus(`Nem sikerült beolvasni: ${f.name}`, 'error');
-    reader.readAsDataURL(f);
-  }
-
-  function renderFileList(){
-    filelistEl.innerHTML = '';
-
-    files.forEach(f => {
-      const chip = document.createElement('span');
-      chip.className = 'chip';
-
-      const label = document.createElement('span');
-      label.textContent = f.name;
-
-      const removeBtn = document.createElement('button');
-      removeBtn.type = 'button';
-      removeBtn.textContent = '×';
-
-      removeBtn.addEventListener('click', () => {
-        files = files.filter(x => x.id !== f.id);
-        renderFileList();
-      });
-
-      chip.appendChild(label);
-      chip.appendChild(removeBtn);
-      filelistEl.appendChild(chip);
-    });
-
-    processBtn.disabled = files.length === 0;
-  }
-
-  function setStatus(text, kind){
-    statusEl.textContent = text;
-    statusEl.className = 'status' + (kind ? ' ' + kind : '');
-  }
-
-  resetBtn.addEventListener('click', () => {
-    files = [];
-    renderFileList();
-    resultCard.hidden = true;
-    uploadCard.hidden = false;
-    setStatus('', '');
-  });
-
-  processBtn.addEventListener('click', async () => {
-    if (!files.length) return;
-
-    processBtn.disabled = true;
-    setStatus('Dokumentumok feldolgozása...', 'loading');
-
-    const content = [];
-
-    for (const f of files) {
-      if (f.kind === 'image') {
-        content.push({
-          type: 'image_url',
-          image_url: {
-            url: `data:${f.mediaType};base64,${f.base64}`
-          }
-        });
-      } else {
-        content.push({
-          type: 'text',
-          text: `[PDF: ${f.name}]`
-        });
-      }
-    }
-
-    content.push({
-      type: 'text',
-      text: 'Kérlek JSON-ben válaszolj...'
-    });
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          max_tokens: 1500,
-          messages: [
-            {
-              role: 'user',
-              content
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('HTTP ' + response.status);
-      }
-
-      const data = await response.json();
-
-      const textBlock = Array.isArray(data?.content)
-        ? data.content.find(b => b?.type === 'text')
-        : null;
-
-      if (!textBlock) throw new Error('Nincs válasz.');
-
-      let cleaned = textBlock.text.replace(/```json|```/g, '').trim();
-
-      const start = cleaned.indexOf('{');
-      const end = cleaned.lastIndexOf('}');
-
-      if (start !== -1 && end !== -1) {
-        cleaned = cleaned.slice(start, end + 1);
-      }
-
-      const parsed = JSON.parse(cleaned);
-
-      renderResult(parsed);
-
-      uploadCard.hidden = true;
-      resultCard.hidden = false;
-      setStatus('', '');
-
-    } catch (err) {
-      console.error(err);
-      setStatus(
-        'Hiba: ' + err.message,
-        'error'
-      );
-    }
-
-    processBtn.disabled = false;
-  });
-
-  function renderResult(data){
-    fCim.textContent = data.cim || 'Nincs adat';
-    fDatum.textContent = data.birtokbaadas_datuma || 'Nincs adat';
-
-    metersEl.innerHTML = '';
-
-    (data.merok || []).forEach(m => {
-      const div = document.createElement('div');
-      div.className = 'meter';
-
-      div.innerHTML = `
-        <div class="meter-type">${m.tipus || 'Mérő'}</div>
-        <div class="meter-serial">Gyári szám: ${m.gyari_szam || 'nincs'}</div>
-        <div class="meter-display">
-          <span class="meter-digits">${m.mero_allas || '—'}</span>
-          <span class="meter-unit">${m.mertekegyseg || ''}</span>
-        </div>
-      `;
-
-      metersEl.appendChild(div);
-    });
-
-    noticeEl.hidden = true;
-  }
-
-})();
-</script>
+<script src="./app.js"></script>
 </body>
 </html>
