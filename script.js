@@ -6,8 +6,8 @@ let files = [];
 let isProcessingFiles = false;
 
 // Kérlek, vágd ketté az OpenRouter kulcsodat, és másold be ide a két felét!
-const KEY_PART1 = "IDE_MÁSOLD_A_KULCSOD_ELSŐ_FELÉT";
-const KEY_PART2 = "IDE_MÁSOLD_A_KULCSOD_MÁSODIK_FELÉT";
+const KEY_PART1 = "sk-or-v1-4f2471cd05e20d42b7a20da63";
+const KEY_PART2 = "b9b23f278c6c951739da6b54d76a33d574ea4bb";
 
 /* ===== DOM ELEMENTS ===== */
 const dropzone = document.getElementById('dropzone');
