@@ -1,36 +1,24 @@
-export const config = {
-  runtime: 'edge',
-};
+export default async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-export default async function handler(req) {
-  // CORS kezelése az előzetes böngésző ellenőrzésekhez (OPTIONS)
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      }
-    });
+    return res.status(200).end();
+  }
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Only POST allowed" });
   }
 
   try {
-    if (req.method !== "POST") {
-      return new Response(JSON.stringify({ error: "Only POST allowed" }), { status: 405 });
-    }
-
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "Hiányzó API kulcs a Vercelből!" }), { status: 500 });
+      return res.status(500).json({ error: "Rendszerhiba: Hiányzik az OPENAI_API_KEY a Vercelből!" });
     }
 
-    const { messages } = await req.json();
-    if (!messages) {
-      return new Response(JSON.stringify({ error: "Hiányzó messages tömb!" }), { status: 400 });
-    }
+    const { messages } = req.body;
 
-    // Hívás az OpenAI felé
     const response = await fetch("https://openai.com", {
       method: "POST",
       headers: {
@@ -46,24 +34,12 @@ export default async function handler(req) {
     const data = await response.json();
 
     if (!response.ok) {
-      return new Response(JSON.stringify({ error: "OpenAI hiba: " + (data.error?.message || JSON.stringify(data)) }), { status: 500 });
+      return res.status(500).json({ error: "OpenAI hiba: " + (data.error?.message || JSON.stringify(data)) });
     }
 
-    const reply = data.choices?.[0]?.message?.content ?? "";
-
-    // Teljes válasz visszaküldése a frontendnek
-    return new Response(JSON.stringify({ reply: reply }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type"
-      }
-    });
+    return res.status(200).json({ reply: data.choices?.[0]?.message?.content ?? "" });
     
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return res.status(500).json({ error: err.message });
   }
 }
-
