@@ -1,1 +1,6 @@
-{}
+{
+  "builds": [
+    { "src": "api/chat.js", "use": "@vercel/node" },
+    { "src": "**", "use": "@vercel/static" }
+  ]
+}
