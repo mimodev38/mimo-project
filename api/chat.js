@@ -41,49 +41,40 @@ dropzone.addEventListener('drop', e => {
 
 fileInput.addEventListener('change', e => handleFiles(e.target.files));
 
-/* ===== FILE HANDLING (STABIL) ===== */
+/* ===== FILE HANDLING ===== */
 function handleFiles(list){
   if (isProcessingFiles) return;
   isProcessingFiles = true;
 
   const incoming = Array.from(list);
-
   let size = files.reduce((a,b)=>a+(b.size||0),0);
 
   for (const f of incoming){
-
     if (files.length >= MAX_FILES){
       setStatus(`Max ${MAX_FILES} fájl.`, true);
       break;
     }
-
     if (!ACCEPTED.includes(f.type)){
       setStatus(`${f.name} nem támogatott.`, true);
       continue;
     }
-
     if (size + f.size > MAX_TOTAL_SIZE){
       setStatus(`${f.name} túl nagy.`, true);
       continue;
     }
-
     size += f.size;
     readFile(f);
   }
 
   fileInput.value = '';
   isProcessingFiles = false;
-
   renderList();
 }
 
 /* ===== BASE64 SAFE ===== */
 function readFile(f){
   const reader = new FileReader();
-
   reader.onload = async () => {
-    await new Promise(r => setTimeout(r, 0));
-
     files.push({
       id: crypto.randomUUID(),
       name: f.name,
@@ -91,19 +82,15 @@ function readFile(f){
       base64: reader.result.split(',')[1],
       size: f.size
     });
-
     renderList();
   };
-
   reader.onerror = () => setStatus(`Hiba: ${f.name}`, true);
-
   reader.readAsDataURL(f);
 }
 
 /* ===== LIST ===== */
 function renderList(){
   filelist.innerHTML = '';
-
   files.forEach(f => {
     const el = document.createElement('div');
     el.className = 'chip';
@@ -113,7 +100,6 @@ function renderList(){
     `;
     filelist.appendChild(el);
   });
-
   processBtn.disabled = files.length === 0;
 }
 
@@ -126,25 +112,6 @@ window.removeFile = (id) => {
 function setStatus(msg, error=false){
   statusEl.textContent = msg;
   statusEl.className = 'status' + (error ? ' error' : '');
-}
-
-/* ===== FETCH SAFE ===== */
-async function safeFetch(url, options){
-  const res = await fetch(url, options);
-  const text = await res.text();
-
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    throw new Error("API nem JSON (Vercel hiba)");
-  }
-
-  if (!res.ok) {
-    throw new Error(data?.error || "HTTP error");
-  }
-
-  return data;
 }
 
 /* ===== PROCESS ===== */
@@ -163,29 +130,29 @@ processBtn.addEventListener('click', async () => {
 
   content.push({
     type: "text",
-    text: "Adj JSON választ"
+    text: "Adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal."
   });
 
   try {
-    const data = await safeFetch('/api/chat', {
+    const res = await fetch('/api/chat', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        max_tokens: 1500,
-        messages: [{ role: 'user', content }]
-      })
+      body: JSON.stringify({ message: content })
     });
 
-    const text = data?.content?.[0]?.text;
-    if (!text) throw new Error("Üres válasz");
+    const data = await res.json();
 
+    if (!res.ok) {
+      throw new Error(data.reply || data.error || "Hiba történt");
+    }
+
+    const text = data.reply;
     const clean = text.replace(/```json|```/g,'').trim();
     const json = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
 
     renderResult(json);
-
     resultCard.hidden = false;
+    setStatus("Sikeres feldolgozás!", false);
 
   } catch (e) {
     setStatus(e.message, true);
