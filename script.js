@@ -38,6 +38,7 @@ function handleFiles(list){
   renderList();
 }
 
+/* ===== OPTIMALIZÁLT KIS FELBONTÁS A VERCEL TIMEOUT ELLEN ===== */
 function readFile(f) {
   const reader = new FileReader();
   reader.onload = async () => {
@@ -47,8 +48,10 @@ function readFile(f) {
       const canvas = document.createElement('canvas');
       let width = img.width;
       let height = img.height;
-      const MAX_WIDTH = 1000;
-      const MAX_HEIGHT = 1000;
+      
+      // Szupergyors feldolgozásra méretezzük a képet (Max 600px)
+      const MAX_WIDTH = 600;
+      const MAX_HEIGHT = 600;
 
       if (width > height) {
         if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
@@ -65,7 +68,8 @@ function readFile(f) {
         id: crypto.randomUUID(),
         name: f.name,
         type: 'image/jpeg',
-        base64: canvas.toDataURL('image/jpeg', 0.7),
+        // Erős tömörítés, hogy minimális adatot kelljen küldeni
+        base64: canvas.toDataURL('image/jpeg', 0.5),
         size: f.size
       });
       renderList();
