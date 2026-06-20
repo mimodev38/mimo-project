@@ -124,11 +124,14 @@ processBtn.addEventListener('click', async () => {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || `Hiba történt a(z) ${f.name} feldolgozásakor.`);
-      }
+if (!res.ok) {
+  throw new Error(data.error || `Hiba történt a(z) ${f.name} feldolgozásakor.`);
+}
 
-      const json = JSON.parse(data.reply.trim());
+const rawText = data.reply || "";
+const cleanText = rawText.replace(/```json|```/g, '').trim();
+const json = JSON.parse(cleanText.slice(cleanText.indexOf('{'), cleanText.lastIndexOf('}') + 1));
+
       
       if (json.cim && json.cim !== "-") finalCim = json.cim;
       if (json.birtokbaadas_datuma && json.birtokbaadas_datuma !== "-") finalDatum = json.birtokbaadas_datuma;
