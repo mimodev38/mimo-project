@@ -11,6 +11,9 @@ const ACCEPTED = [
 let files = [];
 let isProcessingFiles = false;
 
+// Kérlek, ide másold be pontosan a te OpenAI API kulcsodat (sk-proj-...)
+const OPENAI_KEY = "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";
+
 /* ===== DOM ===== */
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
@@ -130,14 +133,19 @@ processBtn.addEventListener('click', async () => {
 
   content.push({
     type: "text",
-    text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Ne használj markdown kódblokkokat (```json), csak a nyers JSON szöveget add vissza."
+    text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Ne használj markdown kódblokkot (szóval ne legyen ```json a válaszban), csak a nyers JSON szöveget add vissza, pl: {\"cim\": \"Valami\", \"birtokbaadas_datuma\": \"2024-01-01\"}"
   });
 
   try {
-    const res = await fetch('/api/chat', {
+    // Közvetlen hívás az OpenAI felé a Vercel kihagyásával
+    const res = await fetch('https://openai.com', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_KEY}`
+      },
       body: JSON.stringify({
+        model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: content }]
       })
     });
@@ -145,10 +153,10 @@ processBtn.addEventListener('click', async () => {
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.error || "Hiba történt");
+      throw new Error(data.error?.message || "Hiba történt az OpenAI hívás során");
     }
 
-    const text = data.reply;
+    const text = data.choices[0].message.content;
     const json = JSON.parse(text.trim());
 
     renderResult(json);
