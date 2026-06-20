@@ -1,5 +1,10 @@
 {
-  "rewrites": [
-    { "source": "/backend-chat", "destination": "/api/chat.js" }
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "script.js", "use": "@vercel/static" },
+    { "src": "api/chat.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/backend-chat", "dest": "api/chat.js" }
   ]
 }
