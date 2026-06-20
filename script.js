@@ -138,7 +138,7 @@ processBtn.addEventListener('click', async () => {
 
   try {
     // Közvetlen hívás az OpenAI felé a Vercel kihagyásával
-    const res = await fetch('https://openai.com', {
+    const res = await fetch('https://herokuapp.com', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
