@@ -19,43 +19,72 @@ export default async function handler(req, res) {
       });
     }
 
-    const claudeBody = req.body;
-    const userBlock = (claudeBody.messages || [])[0] || { content: [] };
+    const body = req.body;
+    const userBlock = (body.messages || [])[0] || { content: [] };
 
-    // ---- IMAGE LIMIT + CONVERT ----
-    const openaiContent = (userBlock.content || []).map((block) => {
-      if (block.type === "image") {
-        const base64 = block?.source?.data || "";
+    // =========================
+    // SAFE CONTENT CONVERSION
+    // =========================
+    const openaiContent = (userBlock.content || [])
+      .map((block) => {
+        if (!block || !block.type) return null;
 
-        // 🛡️ extra védelem nagy képek ellen
-        if (base64.length > 2_000_000) {
+        // TEXT
+        if (block.type === "text") {
           return {
             type: "text",
-            text: "[A kép túl nagy volt, ezért nem lett elküldve a modellnek]"
+            text: block.text || ""
           };
         }
 
-        return {
-          type: "image_url",
-          image_url: {
-            url: `data:${block.source.media_type};base64,${base64}`
+        // IMAGE
+        if (block.type === "image") {
+          const base64 = block?.source?.data;
+          if (!base64) return null;
+
+          // túl nagy kép skip
+          if (base64.length > 2_000_000) {
+            return {
+              type: "text",
+              text: "[Kép túl nagy, kihagyva]"
+            };
           }
-        };
-      }
 
-      if (block.type === "document") {
-        return {
-          type: "text",
-          text: "[PDF csatolva – ezt a proxy nem dolgozza fel]"
-        };
-      }
+          return {
+            type: "image_url",
+            image_url: {
+              url: `data:${block.source.media_type};base64,${base64}`
+            }
+          };
+        }
 
-      return block;
-    });
+        // PDF / DOCUMENT
+        if (block.type === "document") {
+          return {
+            type: "text",
+            text: `[PDF csatolva: nem kerül feldolgozásra]`
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
+    // ha üres lenne
+    if (openaiContent.length === 0) {
+      openaiContent.push({
+        type: "text",
+        text: "Nincs feldolgozható tartalom."
+      });
+    }
 
     const openaiMessages = [];
-    if (claudeBody.system) {
-      openaiMessages.push({ role: "system", content: claudeBody.system });
+
+    if (body.system) {
+      openaiMessages.push({
+        role: "system",
+        content: body.system
+      });
     }
 
     openaiMessages.push({
@@ -63,8 +92,10 @@ export default async function handler(req, res) {
       content: openaiContent
     });
 
-    // ---- RETRY LOGIKA 429-RE ----
-    async function callOpenAI(body, apiKey, retries = 3) {
+    // =========================
+    // OPENAI CALL WITH RETRY
+    // =========================
+    async function callOpenAI(payload, retries = 3) {
       for (let i = 0; i < retries; i++) {
         const response = await fetch(
           "https://api.openai.com/v1/chat/completions",
@@ -74,37 +105,38 @@ export default async function handler(req, res) {
               "Content-Type": "application/json",
               Authorization: `Bearer ${apiKey}`
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(payload)
           }
         );
 
         const data = await response.json();
 
+        // siker
         if (response.ok) return data;
 
-        console.log("OPENAI ERROR:", JSON.stringify(data, null, 2));
+        console.error("OPENAI ERROR:", data);
 
-        // 429 retry (rate limit)
+        // rate limit retry
         if (response.status === 429) {
-          const wait = 500 * Math.pow(2, i); // 500ms → 1s → 2s
+          const wait = 500 * Math.pow(2, i);
           await new Promise((r) => setTimeout(r, wait));
           continue;
         }
 
-        throw new Error(JSON.stringify(data));
+        throw new Error(data?.error?.message || JSON.stringify(data));
       }
 
-      throw new Error("OpenAI rate limit exceeded after retries");
+      throw new Error("OpenAI rate limit exceeded");
     }
 
-    const data = await callOpenAI(
-      {
-        model: "gpt-4o-mini",
-        max_tokens: claudeBody.max_tokens || 1500,
-        messages: openaiMessages
-      },
-      apiKey
-    );
+    // =========================
+    // REQUEST
+    // =========================
+    const data = await callOpenAI({
+      model: "gpt-4o-mini",
+      max_tokens: body.max_tokens || 1500,
+      messages: openaiMessages
+    });
 
     const text = data?.choices?.[0]?.message?.content || "";
 
@@ -113,6 +145,8 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error("HANDLER ERROR:", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      error: err.message
+    });
   }
 }
