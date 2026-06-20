@@ -134,7 +134,7 @@ processBtn.addEventListener('click', async () => {
   });
 
   try {
-    const res = await fetch('/api/chat', {
+    const res = await fetch('/backend-chat', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
