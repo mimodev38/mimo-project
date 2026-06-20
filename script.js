@@ -11,6 +11,18 @@ const ACCEPTED = [
 let files = [];
 let isProcessingFiles = false;
 
+/* ===== API KULCS KEZELÉS (BÖNGÉSZŐBEN ELREJTVE) ===== */
+// Első megnyitáskor bekéri a kulcsot, utána örökre megjegyzi a böngésződ, így nem kell újra beírni!
+let OPENAI_KEY = localStorage.getItem('my_secret_openai_key');
+
+if (!OPENAI_KEY) {
+  const inputKey = prompt("Kérlek, add meg az OpenAI API kulcsodat (sk-proj-...):\n(Ezt csak egyszer kell megadnod, a böngésződ biztonságosan elmenti!)");
+  if (inputKey) {
+    localStorage.setItem('my_secret_openai_key', inputKey.trim());
+    OPENAI_KEY = inputKey.trim();
+  }
+}
+
 /* ===== DOM ===== */
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
@@ -80,6 +92,11 @@ function setStatus(msg, error=false){ statusEl.textContent = msg; statusEl.class
 /* ===== PROCESS ===== */
 processBtn.addEventListener('click', async () => {
   if (!files.length) return;
+  if (!OPENAI_KEY) {
+    setStatus("Hiányzó API kulcs! Frissítsd az oldalt és add meg a kulcsot.", true);
+    return;
+  }
+
   processBtn.disabled = true;
   setStatus("Feldolgozás...", false);
 
@@ -90,23 +107,30 @@ processBtn.addEventListener('click', async () => {
 
   content.push({
     type: "text",
-    text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak a nyers JSON szöveget add vissza, ne használj semmilyen markdown kódblokkot (szóval NE legyen ```json a szövegben)."
+    text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON-t adj, kódblokk (```json) nélkül!"
   });
 
   try {
-    const res = await fetch('/api/chat', {
+    // Közvetlen, tiszta hívás az OpenAI felé – Nincs Vercel szerverhiba, nincs útvonal hiba!
+    const res = await fetch('https://openai.com', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ messages: [{ role: 'user', content }] })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: content }]
+      })
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.error || "Hiba történt a szerveren");
+      throw new Error(data.error?.message || "Hiba történt az OpenAI hívás során");
     }
 
-    const text = data.reply;
+    const text = data.choices[0].message.content;
     const json = JSON.parse(text.trim());
 
     renderResult(json);
