@@ -256,9 +256,17 @@
 
 <script>
 (function(){
-  const MAX_FILES = 6;
-  const ACCEPTED = ['image/png','image/jpeg','image/webp','application/pdf'];
-  let files = [];
+  const MAX_FILES = 15;
+const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25 MB
+
+const ACCEPTED = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'application/pdf'
+];
+
+let files = [];
 
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('fileInput');
@@ -288,11 +296,25 @@
 
   function handleFiles(fileListObj){
     const incoming = Array.from(fileListObj);
+    const currentSize = files.reduce(
+  (sum, f) => sum + (f.originalSize || 0),
+  0
+);
     for (const f of incoming){
       if (files.length >= MAX_FILES){
         setStatus(`Legfeljebb ${MAX_FILES} fájlt tudok egyszerre nézni.`, 'error');
         break;
       }
+      const totalAfterUpload = currentSize +
+  incoming.reduce((s, x) => s + x.size, 0);
+
+if (totalAfterUpload > MAX_TOTAL_SIZE) {
+  setStatus(
+    'A feltöltött fájlok összmérete nem lehet több 25 MB-nál.',
+    'error'
+  );
+  return;
+}
       if (!ACCEPTED.includes(f.type)){
         setStatus(`A ${f.name} formátuma nem támogatott. PNG, JPG vagy PDF kell.`, 'error');
         continue;
@@ -306,13 +328,14 @@
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result.split(',')[1];
-      files.push({
-        id: Math.random().toString(36).slice(2),
-        name: f.name,
-        mediaType: f.type,
-        base64,
-        kind: f.type === 'application/pdf' ? 'document' : 'image'
-      });
+     files.push({
+  id: Math.random().toString(36).slice(2),
+  name: f.name,
+  mediaType: f.type,
+  base64,
+  originalSize: f.size,
+  kind: f.type === 'application/pdf' ? 'document' : 'image'
+});
       renderFileList();
     };
     reader.onerror = () => setStatus(`Nem sikerült beolvasni: ${f.name}`, 'error');
