@@ -295,17 +295,6 @@ let files = [];
   fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
   function handleFiles(fileListObj){
-    const incoming = Array.from(fileListObj);
-    const currentSize = files.reduce(
-  (sum, f) => sum + (f.originalSize || 0),
-  0
-);
-    for (const f of incoming){
-      if (files.length >= MAX_FILES){
-        setStatus(`Legfeljebb ${MAX_FILES} fájlt tudok egyszerre nézni.`, 'error');
-        break;
-      }
-     function handleFiles(fileListObj){
   const incoming = Array.from(fileListObj);
 
   let currentSize = files.reduce(
@@ -325,7 +314,6 @@ let files = [];
       continue;
     }
 
-    // 👉 EZ A LÉNYEGI FIX
     if (currentSize + f.size > MAX_TOTAL_SIZE) {
       setStatus(
         `"${f.name}" már nem fér bele a 25 MB-os keretbe.`,
@@ -341,7 +329,6 @@ let files = [];
 
   fileInput.value = '';
 }
-
 if (totalAfterUpload > MAX_TOTAL_SIZE) {
   setStatus(
     'A feltöltött fájlok összmérete nem lehet több 25 MB-nál.',
