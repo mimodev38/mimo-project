@@ -2,6 +2,6 @@
   "name": "mimo-project",
   "version": "1.0.0",
   "dependencies": {
-    "openai": "^4.0.0"
+    "@google/generative-ai": "^0.1.0"
   }
 }
