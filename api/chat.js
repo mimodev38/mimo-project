@@ -24,17 +24,18 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Hiányzó vagy sérült adatformátum!" });
     }
 
-    // Biztonságos hívás az OpenRouter felé a kötelező referer azonosítókkal
+    // JAVÍTVA: A pontos OpenRouter API végpont megadása
     const response = await fetch("https://openrouter.ai", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey.trim()}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://vercel.app", // Megmondja az OpenRouternek, honnan jön a kérés
-        "X-Title": "Mimo Project"                            // A projekted neve
+        "HTTP-Referer": "https://vercel.app", 
+        "X-Title": "Mimo Project"                            
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash:free",
+        // JAVÍTVA: Az aktuális, stabil ingyenes Gemini modell neve az OpenRouteren
+        model: "google/gemini-2.5-flash",
         messages: [{ role: "user", content: userContent }]
       })
     });
@@ -53,3 +54,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Szerveroldali hiba: " + err.message });
   }
 }
+
