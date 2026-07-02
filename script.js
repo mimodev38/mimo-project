@@ -133,13 +133,21 @@ processBtn.addEventListener('click', async () => {
 
       const data = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || data.error) {
         throw new Error(data.error || `Szerver hiba (${res.status})`);
       }
 
+      // JAVÍTVA: Mivel a backend már eleve tiszta JSON-t küld, közvetlenül feldolgozzuk, nem vágjuk szét a szöveget!
       const rawText = data.reply || "";
-      const cleanText = rawText.replace(/```json|```/g, '').trim();
-      const json = JSON.parse(cleanText.slice(cleanText.indexOf('{'), cleanText.lastIndexOf('}') + 1));
+      let json;
+      
+      try {
+        json = JSON.parse(rawText.trim());
+      } catch (parseError) {
+        // Végső mentőöv, ha mégis becsúszna valami markdown karakter
+        const cleanText = rawText.replace(/```json|```/g, '').trim();
+        json = JSON.parse(cleanText.slice(cleanText.indexOf('{'), cleanText.lastIndexOf('}') + 1));
+      }
       
       if (json.cim && json.cim !== "-") finalCim = json.cim;
       if (json.birtokbaadas_datuma && json.birtokbaadas_datuma !== "-") finalDatum = json.birtokbaadas_datuma;
@@ -165,4 +173,3 @@ function renderResult(data){
 }
 
 resetBtn.addEventListener('click', () => { files = []; renderList(); resultCard.hidden = true; setStatus('', false); });
-
