@@ -1,4 +1,5 @@
 export default async function handler(req, res) {
+  // CORS fejlécek beállítása a biztonságos eléréshez
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -19,6 +20,7 @@ export default async function handler(req, res) {
 
     const { messages } = req.body;
 
+    // Hívás az OpenRouter felé a leggyorsabb ingyenes képes modellel
     const response = await fetch("https://openrouter.ai", {
       method: "POST",
       headers: {
@@ -28,19 +30,19 @@ export default async function handler(req, res) {
         "X-Title": "Mimo Project"                            
       },
       body: JSON.stringify({
-        model: "mistralai/pixtral-12b:free",
+        // ÁTVÁLTVA: Az OpenRouter legstabilabb ingyenes látás-modelljére
+        model: "google/gemini-2.5-flash:free",
         messages: messages
       })
     });
 
+    const resText = await response.text();
+
     if (!response.ok) {
-      const errText = await response.text();
-      return res.status(response.status).json({ error: "OpenRouter hiba: " + errText });
+      return res.status(response.status).json({ error: "OpenRouter elutasítás: " + resText });
     }
 
-    const data = await response.json();
-    
-    // Itt a javítás: nincsenek hibás kérdőjelek a láncolatban!
+    const data = JSON.parse(resText);
     const reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content ? data.choices[0].message.content : "";
     
     return res.status(200).json({ reply: reply });
