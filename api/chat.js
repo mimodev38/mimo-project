@@ -18,13 +18,8 @@ export default async function handler(req, res) {
     }
 
     const { messages } = req.body;
-    const userContent = messages?.[0]?.content;
     
-    if (!userContent || !Array.isArray(userContent)) {
-      return res.status(400).json({ error: "Hiányzó vagy sérült adatformátum!" });
-    }
-
-    // JAVÍTVA: A pontos OpenRouter API végpont megadása
+    // Elküldjük a tiszta JSON csomagot az OpenRouter felé
     const response = await fetch("https://openrouter.ai", {
       method: "POST",
       headers: {
@@ -34,9 +29,8 @@ export default async function handler(req, res) {
         "X-Title": "Mimo Project"                            
       },
       body: JSON.stringify({
-        // JAVÍTVA: Az aktuális, stabil ingyenes Gemini modell neve az OpenRouteren
         model: "google/gemini-2.5-flash",
-        messages: [{ role: "user", content: userContent }]
+        messages: messages
       })
     });
 
