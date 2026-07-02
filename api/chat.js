@@ -12,56 +12,37 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = process.env.OPENROUTER_API_KEY; 
+    const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "Hiányzó API kulcs a Vercel-en!" });
+      return res.status(500).json({ error: "Hiányzó OPENROUTER_API_KEY a Vercel-en!" });
     }
 
     const { messages } = req.body;
-    
-    const userMessage = messages && messages[0] ? messages[0] : null;
-    const textContent = userMessage && userMessage.content ? userMessage.content.find(c => c.type === "text")?.text || "" : "";
-    const imageUrl = userMessage && userMessage.content ? userMessage.content.find(c => c.type === "image_url")?.image_url?.url || "" : "";
-    
-    // Tiszta Base64 kinyerése a fejléc nélkül
-    let base64Data = "";
-    if (imageUrl.includes(",")) {
-      base64Data = imageUrl.split(",")[1];
-    } else {
-      base64Data = imageUrl;
-    }
 
-    // JAVÍTVA: A hivatalos v1-es stabil Google Gemini API végpont
-    const targetUrl = `https://googleapis.com{apiKey.trim()}`;
-
-    const response = await fetch(targetUrl, {
+    // Hívás az OpenRouter felé a hivatalos fizetős/ingyenes hibrid modellre, ami elérhető!
+    const response = await fetch("https://openrouter.ai", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Authorization": "Bearer " + apiKey.trim(),
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://vercel.app", 
+        "X-Title": "Mimo Project"                            
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: textContent },
-            {
-              inlineData: {
-                mimeType: "image/jpeg",
-                data: base64Data
-              }
-            }
-          ]
-        }]
+        // JAVÍTVA: Pontosan az a modell név, amit az OpenRouter kért a korábbi hibaüzenetben!
+        model: "google/gemini-2.5-flash",
+        messages: messages
       })
     });
 
     const resText = await response.text();
 
     if (!response.ok) {
-      return res.status(400).json({ error: "Google API elutasítás: " + resText });
+      return res.status(400).json({ error: "OpenRouter elutasítás: " + resText });
     }
 
     const data = JSON.parse(resText);
-    const reply = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] ? data.candidates[0].content.parts[0].text : "";
+    const reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content ? data.choices[0].message.content : "";
     
     return res.status(200).json({ reply: reply });
     
@@ -69,4 +50,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Szerveroldali hiba: " + err.message });
   }
 }
+
 
