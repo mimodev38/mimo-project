@@ -18,18 +18,16 @@ export default async function handler(req, res) {
     }
 
     const { messages } = req.body;
-    
-    // Javítva az elütés, tiszta változóhívás
+
     const response = await fetch("https://openrouter.ai", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey.trim()}`,
+        "Authorization": "Bearer " + apiKey.trim(),
         "Content-Type": "application/json",
         "HTTP-Referer": "https://vercel.app", 
         "X-Title": "Mimo Project"                            
       },
       body: JSON.stringify({
-        // A te általad választott stabil, látás-képes Mistral modell az OpenRouteren
         model: "mistralai/pixtral-12b:free",
         messages: messages
       })
@@ -37,12 +35,13 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errText = await response.text();
-      return res.status(response.status).json({ error: `OpenRouter hiba: ${errText}` });
+      return res.status(response.status).json({ error: "OpenRouter hiba: " + errText });
     }
 
     const data = await response.json();
-    // Javítva az elütés a válasz kiolvasásánál
-    const reply = data.choices?.[0]?.message?.content || "";
+    
+    // Itt a javítás: nincsenek hibás kérdőjelek a láncolatban!
+    const reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content ? data.choices[0].message.content : "";
     
     return res.status(200).json({ reply: reply });
     
