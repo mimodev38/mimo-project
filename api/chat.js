@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // CORS fejlécek beállítása a biztonságos eléréshez
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -20,8 +19,7 @@ export default async function handler(req, res) {
 
     const { messages } = req.body;
 
-    // Hívás az OpenRouter felé a leggyorsabb ingyenes képes modellel
-    const response = await fetch("https://openrouter.ai", {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": "Bearer " + apiKey.trim(),
@@ -30,19 +28,24 @@ export default async function handler(req, res) {
         "X-Title": "Mimo Project"                            
       },
       body: JSON.stringify({
-        // ÁTVÁLTVA: Az OpenRouter legstabilabb ingyenes látás-modelljére
+        // JAVÍTVA: A hivatalos, teljes elnevezés a stabil ingyenes modellre
         model: "google/gemini-2.5-flash:free",
         messages: messages
       })
     });
 
-    const resText = await response.text();
-
+    // Ha az OpenRouter hibát dob, biztonságosan kiolvassuk a nyers szöveget
     if (!response.ok) {
-      return res.status(response.status).json({ error: "OpenRouter elutasítás: " + resText });
+      let errorDetail = "";
+      try {
+        errorDetail = await response.text();
+      } catch (f) {
+        errorDetail = "Ismeretlen hiba";
+      }
+      return res.status(response.ok ? 200 : 400).json({ error: "OpenRouter elutasítás: " + errorDetail });
     }
 
-    const data = JSON.parse(resText);
+    const data = await response.json();
     const reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content ? data.choices[0].message.content : "";
     
     return res.status(200).json({ reply: reply });
