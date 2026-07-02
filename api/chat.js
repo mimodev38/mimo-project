@@ -12,23 +12,29 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = process.env.OPENROUTER_API_KEY; // Megtartjuk a Vercel változó nevet, hogy ne kelljen ott átírnod!
+    const apiKey = process.env.OPENROUTER_API_KEY; 
     if (!apiKey) {
       return res.status(500).json({ error: "Hiányzó API kulcs a Vercel-en!" });
     }
 
     const { messages } = req.body;
     
-    // Átalakítjuk a script.js által küldött adatot a hivatalos Google formátumra
-    const userMessage = messages?.[0];
-    const textContent = userMessage?.content?.find(c => c.type === "text")?.text || "";
-    const imageUrl = userMessage?.content?.find(c => c.type === "image_url")?.image_url?.url || "";
+    const userMessage = messages && messages[0] ? messages[0] : null;
+    const textContent = userMessage && userMessage.content ? userMessage.content.find(c => c.type === "text")?.text || "" : "";
+    const imageUrl = userMessage && userMessage.content ? userMessage.content.find(c => c.type === "image_url")?.image_url?.url || "" : "";
     
-    // Kivágjuk a base64 fejlécét, mert a Google-nek csak a tiszta adat kell
-    const base64Data = imageUrl.split(",")[1] || "";
+    // Tiszta Base64 kinyerése a fejléc nélkül
+    let base64Data = "";
+    if (imageUrl.includes(",")) {
+      base64Data = imageUrl.split(",")[1];
+    } else {
+      base64Data = imageUrl;
+    }
 
-    // Közvetlen hívás a hivatalos, ingyenes Google Gemini API felé!
-    const response = await fetch(`https://googleapis.com{apiKey.trim()}`, {
+    // JAVÍTVA: A hivatalos v1-es stabil Google Gemini API végpont
+    const targetUrl = `https://googleapis.com{apiKey.trim()}`;
+
+    const response = await fetch(targetUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -55,7 +61,7 @@ export default async function handler(req, res) {
     }
 
     const data = JSON.parse(resText);
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const reply = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] ? data.candidates[0].content.parts[0].text : "";
     
     return res.status(200).json({ reply: reply });
     
