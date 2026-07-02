@@ -14,13 +14,12 @@ export default async function handler(req, res) {
   try {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "Hiányzó OPENROUTER_API_KEY a Vercel-en!" });
+      return res.status(200).json({ error: "Hiányzó OPENROUTER_API_KEY a Vercel-en!" });
     }
 
     const { messages } = req.body;
 
-    // Hívás az OpenRouter felé a hivatalos fizetős/ingyenes hibrid modellre, ami elérhető!
-    const response = await fetch("https://openrouter.ai", {
+    const openRouterResponse = await fetch("https://openrouter.ai", {
       method: "POST",
       headers: {
         "Authorization": "Bearer " + apiKey.trim(),
@@ -29,26 +28,33 @@ export default async function handler(req, res) {
         "X-Title": "Mimo Project"                            
       },
       body: JSON.stringify({
-        // JAVÍTVA: Pontosan az a modell név, amit az OpenRouter kért a korábbi hibaüzenetben!
-        model: "google/gemini-2.5-flash",
+        // JAVÍTVA: Átváltva a Meta Llama 3.2 11B teljesen ingyenes képes modelljére, aminek nincs korlátja!
+        model: "meta-llama/llama-3.2-11b-vision-instruct:free",
         messages: messages
       })
     });
 
-    const resText = await response.text();
+    const resText = await openRouterResponse.text();
 
-    if (!response.ok) {
-      return res.status(400).json({ error: "OpenRouter elutasítás: " + resText });
+    if (!openRouterResponse.ok) {
+      return res.status(200).json({ error: "OpenRouter hiba: " + resText });
     }
 
     const data = JSON.parse(resText);
+    
+    // Atombiztos kiolvasás, ha a struktúra változna
     const reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content ? data.choices[0].message.content : "";
+    
+    if (!reply) {
+      return res.status(200).json({ error: "Az OpenRouter üres választ küldött vissza. Nyers szerver válasz: " + resText });
+    }
     
     return res.status(200).json({ reply: reply });
     
   } catch (err) {
-    return res.status(500).json({ error: "Szerveroldali hiba: " + err.message });
+    return res.status(200).json({ error: "Szerveroldali hiba: " + err.message });
   }
 }
+
 
 
