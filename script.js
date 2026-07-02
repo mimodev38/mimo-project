@@ -123,7 +123,8 @@ processBtn.addEventListener('click', async () => {
         }]
       };
 
-      const res = await fetch("/api/chat", {
+      // JAVÍTVA: Közvetlenül a chat.js fájlt hívjuk be a kiterjesztéssel együtt!
+      const res = await fetch("/api/chat.js", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -137,14 +138,12 @@ processBtn.addEventListener('click', async () => {
         throw new Error(data.error || `Szerver hiba (${res.status})`);
       }
 
-      // JAVÍTVA: Mivel a backend már eleve tiszta JSON-t küld, közvetlenül feldolgozzuk, nem vágjuk szét a szöveget!
       const rawText = data.reply || "";
       let json;
       
       try {
         json = JSON.parse(rawText.trim());
       } catch (parseError) {
-        // Végső mentőöv, ha mégis becsúszna valami markdown karakter
         const cleanText = rawText.replace(/```json|```/g, '').trim();
         json = JSON.parse(cleanText.slice(cleanText.indexOf('{'), cleanText.lastIndexOf('}') + 1));
       }
