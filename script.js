@@ -144,7 +144,8 @@ processBtn.addEventListener('click', async () => {
       if (json.cim && json.cim !== "-") finalCim = json.cim;
       if (json.birtokbaadas_datuma && json.birtokbaadas_datuma !== "-") finalDatum = json.birtokbaadas_datuma;
 
-    } catch (e) {
+       } catch (e) {
+      // Kiíratjuk a teljes hibaüzenetet, így feketén-fehéren látni fogjuk a választ!
       setStatus(`Hiba a(z) ${f.name} fájlnál: ${e.message}`, true);
       processBtn.disabled = false;
       return;
