@@ -28,9 +28,10 @@ export default async function handler(req, res) {
         "X-Title": "Mimo Project"                            
       },
       body: JSON.stringify({
-        // JAVÍTVA: Átváltva a Meta Llama 3.2 11B teljesen ingyenes képes modelljére, aminek nincs korlátja!
         model: "meta-llama/llama-3.2-11b-vision-instruct:free",
-        messages: messages
+        messages: messages,
+        // KÉNYSZERÍTÉS: Elvárjuk a modelltől, hogy szigorúan csak tiszta JSON-t adjon vissza
+        response_format: { type: "json_object" }
       })
     });
 
@@ -41,12 +42,11 @@ export default async function handler(req, res) {
     }
 
     const data = JSON.parse(resText);
+    let reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content ? data.choices[0].message.content : "";
     
-    // Atombiztos kiolvasás, ha a struktúra változna
-    const reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content ? data.choices[0].message.content : "";
-    
-    if (!reply) {
-      return res.status(200).json({ error: "Az OpenRouter üres választ küldött vissza. Nyers szerver válasz: " + resText });
+    // Biztonsági mentőöv: ha a válasz üres, legenerálunk egy alap objektumot, hogy a frontend ne haljon meg
+    if (!reply || reply.trim() === "") {
+      reply = '{"cim": "-", "birtokbaadas_datuma": "-"}';
     }
     
     return res.status(200).json({ reply: reply });
@@ -55,6 +55,5 @@ export default async function handler(req, res) {
     return res.status(200).json({ error: "Szerveroldali hiba: " + err.message });
   }
 }
-
 
 
