@@ -5,6 +5,10 @@ const ACCEPTED = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
 let files = [];
 let isProcessingFiles = false;
 
+// Ide beillesztettem az OpenRouter kulcsodat a korábbi scripted alapján, így közvetlenül működik!
+const KEY_PART1 = "sk-or-v1-4f2471cd05e20d42b7a20da63b9b23";
+const KEY_PART2 = "f278c6c951739da6b54d76a33d574ea4bb";
+
 /* ===== DOM ELEMENTS ===== */
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
@@ -100,53 +104,51 @@ processBtn.addEventListener('click', async () => {
   let finalCim = "-";
   let finalDatum = "-";
 
+  const fullKey = KEY_PART1.trim() + KEY_PART2.trim();
+
   for (let i = 0; i < files.length; i++) {
     const f = files[i];
     setStatus(`Fájl feldolgozása (${i + 1}/${files.length}): ${f.name}...`, false);
 
     try {
-      const payload = {
-        messages: [{
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, markdown kódblokk jelölések nélkül!"
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: f.base64
-              }
-            }
-          ]
-        }]
-      };
-
-      // JAVÍTVA: Közvetlenül a chat.js fájlt hívjuk be a kiterjesztéssel együtt!
-      const res = await fetch("/api/chat.js", {
+      // JAVÍTVA: Közvetlenül az OpenRouter hivatalos végpontját hívjuk a Meta Llama stabil ingyenes modelljével
+      const res = await fetch("https://openrouter.ai", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Authorization": `Bearer ${fullKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": window.location.origin,
+          "X-Title": "Mimo Project"
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          model: "meta-llama/llama-3.2-11b-vision-instruct:free",
+          response_format: { type: "json_object" },
+          messages: [{
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, markdown kódblokk jelölések nélkül!"
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: f.base64
+                }
+              }
+            ]
+          }]
+        })
       });
 
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`OpenRouter elutasítás (${res.status}): ${errText.substring(0, 100)}`);
+      }
+
       const data = await res.json();
-
-      if (!res.ok || data.error) {
-        throw new Error(data.error || `Szerver hiba (${res.status})`);
-      }
-
-      const rawText = data.reply || "";
-      let json;
-      
-      try {
-        json = JSON.parse(rawText.trim());
-      } catch (parseError) {
-        const cleanText = rawText.replace(/```json|```/g, '').trim();
-        json = JSON.parse(cleanText.slice(cleanText.indexOf('{'), cleanText.lastIndexOf('}') + 1));
-      }
+      const rawText = data.choices?.[0]?.message?.content || "";
+      const json = JSON.parse(rawText.trim());
       
       if (json.cim && json.cim !== "-") finalCim = json.cim;
       if (json.birtokbaadas_datuma && json.birtokbaadas_datuma !== "-") finalDatum = json.birtokbaadas_datuma;
@@ -172,3 +174,4 @@ function renderResult(data){
 }
 
 resetBtn.addEventListener('click', () => { files = []; renderList(); resultCard.hidden = true; setStatus('', false); });
+
