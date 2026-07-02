@@ -30,7 +30,6 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "meta-llama/llama-3.2-11b-vision-instruct:free",
         messages: messages,
-        // KÉNYSZERÍTÉS: Elvárjuk a modelltől, hogy szigorúan csak tiszta JSON-t adjon vissza
         response_format: { type: "json_object" }
       })
     });
@@ -44,7 +43,6 @@ export default async function handler(req, res) {
     const data = JSON.parse(resText);
     let reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content ? data.choices[0].message.content : "";
     
-    // Biztonsági mentőöv: ha a válasz üres, legenerálunk egy alap objektumot, hogy a frontend ne haljon meg
     if (!reply || reply.trim() === "") {
       reply = '{"cim": "-", "birtokbaadas_datuma": "-"}';
     }
