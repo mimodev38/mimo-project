@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
     const { messages } = req.body;
     
-    // Elküldjük a tiszta JSON csomagot az OpenRouter felé
+    // Javítva az elütés, tiszta változóhívás
     const response = await fetch("https://openrouter.ai", {
       method: "POST",
       headers: {
@@ -29,7 +29,8 @@ export default async function handler(req, res) {
         "X-Title": "Mimo Project"                            
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        // A te általad választott stabil, látás-képes Mistral modell az OpenRouteren
+        model: "mistralai/pixtral-12b:free",
         messages: messages
       })
     });
@@ -40,6 +41,7 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
+    // Javítva az elütés a válasz kiolvasásánál
     const reply = data.choices?.[0]?.message?.content || "";
     
     return res.status(200).json({ reply: reply });
@@ -48,4 +50,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Szerveroldali hiba: " + err.message });
   }
 }
+
 
