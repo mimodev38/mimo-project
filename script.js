@@ -105,38 +105,38 @@ processBtn.addEventListener('click', async () => {
     setStatus(`Fájl feldolgozása (${i + 1}/${files.length}): ${f.name}...`, false);
 
     try {
-      // JAVÍTVA: A külső proxy hívás helyett a saját, biztonságos Vercel backendünket hívjuk meg!
+      const payload = {
+        messages: [{
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, markdown kódblokk jelölések nélkül!"
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: f.base64
+              }
+            }
+          ]
+        }]
+      };
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          messages: [{
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Elemezd a képet és adj egy JSON objektumot válaszként 'cim' és 'birtokbaadas_datuma' kulcsokkal. Csak nyers JSON szöveget adj vissza, markdown kódblokk jelölések nélkül!"
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: f.base64
-                }
-              }
-            ]
-          }]
-        })
+        body: JSON.stringify(payload)
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || `Szerver hiba (${res.status})`);
+        throw new Error(data.error || `Szerver hiba (${res.status})`);
       }
 
-      const data = await res.json();
-      // JAVÍTVA: A Vercel backendből érkező "reply" változót dolgozzuk fel
       const rawText = data.reply || "";
       const cleanText = rawText.replace(/```json|```/g, '').trim();
       const json = JSON.parse(cleanText.slice(cleanText.indexOf('{'), cleanText.lastIndexOf('}') + 1));
@@ -144,8 +144,7 @@ processBtn.addEventListener('click', async () => {
       if (json.cim && json.cim !== "-") finalCim = json.cim;
       if (json.birtokbaadas_datuma && json.birtokbaadas_datuma !== "-") finalDatum = json.birtokbaadas_datuma;
 
-       } catch (e) {
-      // Kiíratjuk a teljes hibaüzenetet, így feketén-fehéren látni fogjuk a választ!
+    } catch (e) {
       setStatus(`Hiba a(z) ${f.name} fájlnál: ${e.message}`, true);
       processBtn.disabled = false;
       return;
@@ -166,3 +165,4 @@ function renderResult(data){
 }
 
 resetBtn.addEventListener('click', () => { files = []; renderList(); resultCard.hidden = true; setStatus('', false); });
+
